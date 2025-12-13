@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>舞蹈脚本动画演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        h1 {
+            color: #4a5568;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #718096;
+            font-size: 1.2rem;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .dance-area {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .controls {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .canvas-container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        #danceCanvas {
+            display: block;
+            background-color: white;
+            border-radius: 8px;
+            margin: 0 auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-panel {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button#stopBtn {
+            background-color: #f56565;
+        }
+        
+        button#stopBtn:hover {
+            background-color: #e53e3e;
+        }
+        
+        button#resetBtn {
+            background-color: #718096;
+        }
+        
+        button#resetBtn:hover {
+            background-color: #4a5568;
+        }
+        
+        .example-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .example-btn {
+            background-color: #48bb78;
+        }
+        
+        .example-btn:hover {
+            background-color: #38a169;
+        }
+        
+        .script-info {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .code-block {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .time-display {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #edf2f7;
+            border-radius: 8px;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            background-color: #e6fffa;
+            color: #234e52;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            color: #718096;
+        }
+        
+        .key {
+            display: inline-block;
+            background-color: #edf2f7;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 0 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .example-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>舞蹈脚本动画演示</h1>
+            <p class="subtitle">一种基于JSON的舞蹈动作格式，控制双手和头部的摆动</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="dance-area">
+                <h2>舞蹈动画</h2>
+                <div class="canvas-container">
+                    <canvas id="danceCanvas" width="600" height="500"></canvas>
+                </div>
+                <div class="time-display">
+                    时间: <span id="timeDisplay">0.0</span> 秒
+                </div>
+                <div class="status" id="statusDisplay">准备开始</div>
+            </div>
+            
+            <div class="controls">
+                <h2>控制面板</h2>
+                <div class="control-panel">
+                    <div class="button-group">
+                        <button id="startBtn">开始动画</button>
+                        <button id="stopBtn">暂停动画</button>
+                        <button id="resetBtn">重置动画</button>
+                    </div>
+                    
+                    <h3>速度控制</h3>
+                    <div class="button-group">
+                        <button id="speedSlow">慢速 (0.5x)</button>
+                        <button id="speedNormal">正常 (1x)</button>
+                        <button id="speedFast">快速 (2x)</button>
+                    </div>
+                    
+                    <h3>示例舞蹈</h3>
+                    <div class="example-buttons">
+                        <button class="example-btn" data-example="wave">波浪舞</button>
+                        <button class="example-btn" data-example="headShake">摇头舞</button>
+                        <button class="example-btn" data-example="symmetric">对称摆动</button>
+                        <button class="example-btn" data-example="random">随机舞蹈</button>
+                    </div>
+                </div>
+                
+                <div class="script-info">
+                    <h3>当前舞蹈脚本</h3>
+                    <p>舞蹈脚本使用JSON格式，定义了时间轴上的动作关键帧。</p>
+                    <div class="code-block" id="scriptDisplay">
+                        // 脚本将在这里显示
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>舞蹈脚本格式规范: 包含时间轴、双手摆动角度、头部摆动角度等参数</p>
+        </footer>
+    </div>
+
+    <script>
+        // 舞蹈脚本格式定义
+        class DanceScript {
+            constructor(name, frames) {
+                this.name = name;
+                this.frames = frames; // 关键帧数组
+                this.duration = Math.max(...frames.map(frame => frame.time));
+            }
+        }
+        
+        // 舞蹈动画演示器
+        class DanceAnimation {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+                
+                // 动画状态
+                this.isPlaying = false;
+                this.currentTime = 0;
+                this.speed = 1.0;
+                this.animationId = null;
+                this.lastTime = 0;
+                
+                // 初始姿势
+                this.currentPose = {
+                    leftHandAngle: 0,   // 左手角度（弧度）
+                    rightHandAngle: 0,  // 右手角度（弧度）
+                    headAngle: 0,       // 头部角度（弧度）
+                    leftHandLength: 80, // 左手长度
+                    rightHandLength: 80, // 右手长度
+                    headOffsetX: 0,      // 头部水平偏移
+                    headOffsetY: 0       // 头部垂直偏移
+                };
+                
+                // 默认舞蹈脚本
+                this.currentScript = this.createWaveDance();
+                
+                // 初始化
+                this.init();
+            }
+            
+            init() {
+                // 设置事件监听器
+                this.setupEventListeners();
+                
+                // 绘制初始状态
+                this.draw();
+                this.updateScriptDisplay();
+            }
+            
+            setupEventListeners() {
+                // 控制按钮
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                
+                // 速度控制
+                document.getElementById('speedSlow').addEventListener('click', () => this.setSpeed(0.5));
+                document.getElementById('speedNormal').addEventListener('click', () => this.setSpeed(1.0));
+                document.getElementById('speedFast').addEventListener('click', () => this.setSpeed(2.0));
+                
+                // 示例舞蹈
+                document.querySelectorAll('.example-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const example = e.target.dataset.example;
+                        this.loadExample(example);
+                    });
+                });
+            }
+            
+            // 创建示例舞蹈脚本
+            createWaveDance() {
+                const frames = [];
+                const duration = 4000; // 4秒
+                const frameCount = 20;
+                
+                for (let i = 0; i <= frameCount; i++) {
+                    const time = (i / frameCount) * duration;
+                    const progress = i / frameCount;
+                    
+                    // 波浪式摆动
+                    const wave = Math.sin(progress * Math.PI * 4);
+                    
+                    frames.push({
+                        time: time,
+                        leftHandAngle: Math.sin(progress * Math.PI * 2) * 0.8,
+                        rightHandAngle: Math.sin(progress * Math.PI * 2 + Math.PI) * 0.8,
+                        headAngle: wave * 0.3,
+                        leftHandLength: 80 + Math.sin(progress * Math.PI * 4) * 10,
+                        rightHandLength: 80 + Math.sin(progress * Math.PI * 4 + Math.PI) * 10
+                    });
+                }
+                
+                return new DanceScript("波浪舞", frames);
+            }
+            
+            createHeadShakeDance() {
+                const frames = [];
+                const duration = 3000; // 3秒
+                const frameCount = 15;
+                
+                for (let i = 0; i <= frameCount; i++) {
+                    const time = (i / frameCount) * duration;
+                    const progress = i / frameCount;
+                    
+                    // 头部左右摆动
+                    const headShake = Math.sin(progress * Math.PI * 6);
+                    
+                    frames.push({
+                        time: time,
+                        leftHandAngle: Math.sin(progress * Math.PI * 2) * 0.5,
+                        rightHandAngle: Math.sin(progress * Math.PI * 2) * 0.5,
+                        headAngle: headShake * 0.8,
+                        headOffsetX: headShake * 15,
+                        leftHandLength: 80,
+                        rightHandLength: 80
+                    });
+                }
+                
+                return new DanceScript("摇头舞", frames);
+            }
+            
+            createSymmetricDance() {
+                const frames = [];
+                const duration = 3500; // 3.5秒
+                const frameCount = 20;
+                
+                for (let i = 0; i <= frameCount; i++) {
+                    const time = (i / frameCount) * duration;
+                    const progress = i / frameCount;
+                    
+                    // 对称摆动
+                    const wave = Math.sin(progress * Math.PI * 4);
+                    
+                    frames.push({
+                        time: time,
+                        leftHandAngle: wave * 1.2,
+                        rightHandAngle: wave * 1.2,
+                        headAngle: wave * 0.2,
+                        leftHandLength: 80 + Math.abs(wave) * 20,
+                        rightHandLength: 80 + Math.abs(wave) * 20
+                    });
+                }
+                
+                return new DanceScript("对称摆动", frames);
+            }
+            
+            createRandomDance() {
+                const frames = [];
+                const duration = 5000; // 5秒
+                const frameCount = 25;
+                
+                for (let i = 0; i <= frameCount; i++) {
+                    const time = (i / frameCount) * duration;
+                    const progress = i / frameCount;
+                    
+                    // 随机但平滑的摆动
+                    const randomWave1 = Math.sin(progress * Math.PI * 3 + 0.5) * 0.7;
+                    const randomWave2 = Math.sin(progress * Math.PI * 2.5 + 1.2) * 0.9;
+                    const randomWave3 = Math.sin(progress * Math.PI * 1.8 + 2.1) * 0.5;
+                    
+                    frames.push({
+                        time: time,
+                        leftHandAngle: randomWave1 * 1.0,
+                        rightHandAngle: randomWave2 * 1.0,
+                        headAngle: randomWave3 * 0.6,
+                        headOffsetX: randomWave3 * 20,
+                        headOffsetY: Math.sin(progress * Math.PI * 2) * 10,
+                        leftHandLength: 80 + Math.sin(progress * Math.PI * 3) * 15,
+                        rightHandLength: 80 + Math.sin(progress * Math.PI * 3.5) * 15
+                    });
+                }
+                
+                return new DanceScript("随机舞蹈", frames);
+            }
+            
+            // 加载示例
+            loadExample(exampleName) {
+                switch(exampleName) {
+                    case 'wave':
+                        this.currentScript = this.createWaveDance();
+                        break;
+                    case 'headShake':
+                        this.currentScript = this.createHeadShakeDance();
+                        break;
+                    case 'symmetric':
+                        this.currentScript = this.createSymmetricDance();
+                        break;
+                    case 'random':
+                        this.currentScript = this.createRandomDance();
+                        break;
+                }
+                
+                this.reset();
+                this.updateScriptDisplay();
+                document.getElementById('statusDisplay').textContent = `已加载: ${this.currentScript.name}`;
+            }
+            
+            // 更新脚本显示
+            updateScriptDisplay() {
+                const scriptDisplay = document.getElementById('scriptDisplay');
+                const scriptData = {
+                    name: this.currentScript.name,
+                    duration: this.currentScript.duration,
+                    frames: this.currentScript.frames.slice(0, 3) // 只显示前3帧作为示例
+                };
+                
+                scriptDisplay.textContent = JSON.stringify(scriptData, null, 2);
+            }
+            
+            // 设置速度
+            setSpeed(speed) {
+                this.speed = speed;
+                document.getElementById('statusDisplay').textContent = `速度设置为: ${speed}x`;
+            }
+            
+            // 开始动画
+            start() {
+                if (!this.isPlaying) {
+                    this.isPlaying = true;
+                    this.lastTime = performance.now();
+                    this.animate();
+                    document.getElementById('statusDisplay').textContent = `播放中: ${this.currentScript.name}`;
+                }
+            }
+            
+            // 停止动画
+            stop() {
+                this.isPlaying = false;
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+                document.getElementById('statusDisplay').textContent = "已暂停";
+            }
+            
+            // 重置动画
+            reset() {
+                this.stop();
+                this.currentTime = 0;
+                this.updatePose();
+                this.draw();
+                document.getElementById('timeDisplay').textContent = "0.0";
+                document.getElementById('statusDisplay').textContent = "已重置";
+            }
+            
+            // 动画循环
+            animate() {
+                if (!this.isPlaying) return;
+                
+                const now = performance.now();
+                const deltaTime = now - this.lastTime;
+                this.lastTime = now;
+                
+                // 更新时间
+                this.currentTime += deltaTime * this.speed;
+                
+                // 循环动画
+                if (this.currentTime > this.currentScript.duration) {
+                    this.currentTime %= this.currentScript.duration;
+                }
+                
+                // 更新姿势
+                this.updatePose();
+                
+                // 绘制
+                this.draw();
+                
+                // 更新时间显示
+                document.getElementById('timeDisplay').textContent = (this.currentTime / 1000).toFixed(1);
+                
+                // 继续动画循环
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+            
+            // 根据当前时间更新姿势
+            updatePose() {
+                const frames = this.currentScript.frames;
+                
+                // 找到当前时间所在的两个关键帧
+                let prevFrame = frames[0];
+                let nextFrame = frames[frames.length - 1];
+                
+                for (let i = 0; i < frames.length - 1; i++) {
+                    if (frames[i].time <= this.currentTime && frames[i + 1].time >= this.currentTime) {
+                        prevFrame = frames[i];
+                        nextFrame = frames[i + 1];
+                        break;
+                    }
+                }
+                
+                // 计算插值比例
+                const timeRange = nextFrame.time - prevFrame.time;
+                const t = timeRange > 0 ? (this.currentTime - prevFrame.time) / timeRange : 0;
+                
+                // 线性插值
+                this.currentPose.leftHandAngle = this.lerp(prevFrame.leftHandAngle || 0, nextFrame.leftHandAngle || 0, t);
+                this.currentPose.rightHandAngle = this.lerp(prevFrame.rightHandAngle || 0, nextFrame.rightHandAngle || 0, t);
+                this.currentPose.headAngle = this.lerp(prevFrame.headAngle || 0, nextFrame.headAngle || 0, t);
+                this.currentPose.leftHandLength = this.lerp(prevFrame.leftHandLength || 80, nextFrame.leftHandLength || 80, t);
+                this.currentPose.rightHandLength = this.lerp(prevFrame.rightHandLength || 80, nextFrame.rightHandLength || 80, t);
+                this.currentPose.headOffsetX = this.lerp(prevFrame.headOffsetX || 0, nextFrame.headOffsetX || 0, t);
+                this.currentPose.headOffsetY = this.lerp(prevFrame.headOffsetY || 0, nextFrame.headOffsetY || 0, t);
+            }
+            
+            // 线性插值函数
+            lerp(a, b, t) {
+                return a + (b - a) * t;
+            }
+            
+            // 绘制舞蹈者
+            draw() {
+                const ctx = this.ctx;
+                const centerX = this.width / 2;
+                const centerY = this.height / 2;
+                
+                // 清空画布
+                ctx.clearRect(0, 0, this.width, this.height);
+                
+                // 绘制背景网格
+                this.drawGrid();
+                
+                // 绘制身体
+                ctx.save();
+                
+                // 身体
+                ctx.fillStyle = '#4a5568';
+                ctx.fillRect(centerX - 20, centerY - 100, 40, 150);
+                
+                // 头部
+                ctx.save();
+                ctx.translate(centerX + this.currentPose.headOffsetX, centerY - 150 + this.currentPose.headOffsetY);
+                ctx.rotate(this.currentPose.headAngle);
+                
+                // 头部
+                ctx.fillStyle = '#fbb6ce';
+                ctx.beginPath();
+                ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 眼睛
+                ctx.fillStyle = '#2d3748';
+                ctx.beginPath();
+                ctx.arc(-10, -5, 5, 0, Math.PI * 2);
+                ctx.arc(10, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 嘴巴
+                ctx.strokeStyle = '#2d3748';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 5, 10, 0.2 * Math.PI, 0.8 * Math.PI);
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // 左手
+                ctx.save();
+                ctx.translate(centerX - 20, centerY - 80);
+                ctx.rotate(this.currentPose.leftHandAngle);
+                
+                ctx.strokeStyle = '#4a5568';
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-this.currentPose.leftHandLength, 0);
+                ctx.stroke();
+                
+                // 手部
+                ctx.fillStyle = '#fbb6ce';
+                ctx.beginPath();
+                ctx.arc(-this.currentPose.leftHandLength, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // 右手
+                ctx.save();
+                ctx.translate(centerX + 20, centerY - 80);
+                ctx.rotate(this.currentPose.rightHandAngle);
+                
+                ctx.strokeStyle = '#4a5568';
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(this.currentPose.rightHandLength, 0);
+                ctx.stroke();
+                
+                // 手部
+                ctx.fillStyle = '#fbb6ce';
+                ctx.beginPath();
+                ctx.arc(this.currentPose.rightHandLength, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // 腿部
+                ctx.strokeStyle = '#4a5568';
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(centerX - 10, centerY + 50);
+                ctx.lineTo(centerX - 20, centerY + 120);
+                ctx.moveTo(centerX + 10, centerY + 50);
+                ctx.lineTo(centerX + 20, centerY + 120);
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // 绘制坐标轴
+                this.drawAxes();
+            }
+            
+            // 绘制网格
+            drawGrid() {
+                const ctx = this.ctx;
+                const gridSize = 50;
+                
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1;
+                
+                // 垂直线
+                for (let x = 0; x <= this.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, this.height);
+                    ctx.stroke();
+                }
+                
+                // 水平线
+                for (let y = 0; y <= this.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(this.width, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // 绘制坐标轴
+            drawAxes() {
+                const ctx = this.ctx;
+                const centerX = this.width / 2;
+                const centerY = this.height / 2;
+                
+                ctx.strokeStyle = '#a0aec0';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                
+                // X轴
+                ctx.beginPath();
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(this.width, centerY);
+                ctx.stroke();
+                
+                // Y轴
+                ctx.beginPath();
+                ctx.moveTo(centerX, 0);
+                ctx.lineTo(centerX, this.height);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+                
+                // 原点标记
+                ctx.fillStyle = '#4299e1';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 标签
+                ctx.fillStyle = '#718096';
+                ctx.font = '12px Arial';
+                ctx.fillText('身体中心', centerX + 10, centerY - 10);
+            }
+        }
+        
+        // 初始化动画
+        document.addEventListener('DOMContentLoaded', () => {
+            const danceAnimation = new DanceAnimation('danceCanvas');
+        });
+    </script>
+</body>
+</html>

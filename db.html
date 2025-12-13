@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>舞蹈脚本演示器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        body {
+            background: #f5f7fa;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        
+        .editor-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .editor-section {
+                flex-direction: column;
+            }
+        }
+        
+        .script-editor {
+            flex: 1;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #danceCanvas {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #4299e1;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #3182ce;
+        }
+        
+        button.stop {
+            background: #e53e3e;
+        }
+        
+        button.stop:hover {
+            background: #c53030;
+        }
+        
+        button.example {
+            background: #48bb78;
+            margin: 0 5px;
+        }
+        
+        button.example:hover {
+            background: #38a169;
+        }
+        
+        .examples {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .instructions {
+            background: #f0f8fb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .instructions h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+            color: #4a5568;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>舞蹈脚本演示器</h1>
+        
+        <div class="instructions">
+            <h3>舞蹈脚本格式说明</h3>
+            <ul>
+                <li>脚本由多行动作指令组成，每行代表一个时间帧（默认60帧/秒）</li>
+                <li>指令格式：<code>头部角度,左手角度,右手角度,持续帧数</code></li>
+                <li>角度说明：0°为正面，正数为向右/向上，负数为向左/向下</li>
+                <li>头部角度范围：-45° 到 45°（左右摆动）</li>
+                <li>手部角度范围：-90° 到 90°（前后摆动，0°为垂直向下）</li>
+                <li>持续帧数：该动作保持的帧数（如60表示保持1秒）</li>
+                <li>示例：<code>0,0,0,30</code> 表示头部和双手保持正面30帧（0.5秒）</li>
+            </ul>
+        </div>
+        
+        <div class="examples">
+            <button class="example" onclick="loadExample('basic')">基础动作</button>
+            <button class="example" onclick="loadExample('wave')">挥手动作</button>
+            <button class="example" onclick="loadExample('nod')">点头动作</button>
+            <button class="example" onclick="loadExample('dance')">舞蹈组合</button>
+        </div>
+        
+        <div class="editor-section">
+            <div class="script-editor">
+                <textarea id="danceScript" placeholder="输入舞蹈脚本指令，每行一个动作...">
+# 基础示例 - 静止姿势
+0,0,0,60
+                </textarea>
+                <div class="controls">
+                    <button onclick="startDance()">开始播放</button>
+                    <button class="stop" onclick="stopDance()">停止播放</button>
+                    <button onclick="clearScript()">清空脚本</button>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="danceCanvas" width="400" height="500"></canvas>
+                <div id="status" style="margin-top: 10px; color: #4a5568;">就绪</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取Canvas和上下文
+        const canvas = document.getElementById('danceCanvas');
+        const ctx = canvas.getContext('2d');
+        const scriptTextarea = document.getElementById('danceScript');
+        const statusDisplay = document.getElementById('status');
+        
+        // 动画控制变量
+        let animationId = null;
+        let currentFrame = 0;
+        let danceActions = [];
+        let actionIndex = 0;
+        let frameCounter = 0;
+        
+        // 人物参数
+        const person = {
+            x: canvas.width / 2,
+            y: 100,
+            head: {
+                radius: 40,
+                angle: 0 // 左右摆动角度
+            },
+            body: {
+                width: 80,
+                height: 120
+            },
+            arm: {
+                length: 100,
+                leftAngle: 0, // 前后摆动角度
+                rightAngle: 0
+            }
+        };
+        
+        // 初始化画布
+        function initCanvas() {
+            drawPerson();
+        }
+        
+        // 绘制人物
+        function drawPerson() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制地面
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            
+            // 绘制身体
+            ctx.fillStyle = '#4299e1';
+            ctx.fillRect(
+                person.x - person.body.width / 2,
+                person.y + person.head.radius * 2,
+                person.body.width,
+                person.body.height
+            );
+            
+            // 绘制头部
+            ctx.fillStyle = '#f6ad55';
+            ctx.beginPath();
+            ctx.arc(
+                person.x + person.head.angle * 2, // 头部左右偏移
+                person.y + person.head.radius,
+                person.head.radius,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 绘制眼睛
+            ctx.fillStyle = '#2d3748';
+            const eyeOffsetX = person.head.angle * 0.5;
+            ctx.beginPath();
+            ctx.arc(
+                person.x + person.head.angle * 2 - 15 + eyeOffsetX,
+                person.y + person.head.radius - 10,
+                5,
+                0,
+                Math.PI * 2
+            );
+            ctx.arc(
+                person.x + person.head.angle * 2 + 15 + eyeOffsetX,
+                person.y + person.head.radius - 10,
+                5,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 绘制左手
+            drawArm('left');
+            
+            // 绘制右手
+            drawArm('right');
+            
+            // 绘制腿部
+            ctx.fillStyle = '#2d3748';
+            ctx.fillRect(
+                person.x - person.body.width / 2 + 15,
+                person.y + person.head.radius * 2 + person.body.height,
+                20,
+                80
+            );
+            ctx.fillRect(
+                person.x + person.body.width / 2 - 35,
+                person.y + person.head.radius * 2 + person.body.height,
+                20,
+                80
+            );
+        }
+        
+        // 绘制手臂
+        function drawArm(side) {
+            ctx.strokeStyle = '#4299e1';
+            ctx.lineWidth = 15;
+            ctx.lineCap = 'round';
+            
+            const isLeft = side === 'left';
+            const angle = isLeft ? person.arm.leftAngle : person.arm.rightAngle;
+            const armX = person.x + (isLeft ? -person.body.width/2 : person.body.width/2);
+            const armY = person.y + person.head.radius * 2 + 30;
+            
+            // 计算手臂末端位置
+            const radian = angle * Math.PI / 180;
+            const endX = armX + Math.sin(radian) * person.arm.length;
+            const endY = armY + Math.cos(radian) * person.arm.length;
+            
+            ctx.beginPath();
+            ctx.moveTo(armX, armY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        }
+        
+        // 解析舞蹈脚本
+        function parseScript(script) {
+            const actions = [];
+            
+            // 按行分割并处理
+            const lines = script.trim().split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // 跳过注释和空行
+                if (!line || line.startsWith('#')) continue;
+                
+                // 解析指令
+                const parts = line.split(',');
+                if (parts.length !== 4) {
+                    alert(`第${i+1}行格式错误，应为：头部角度,左手角度,右手角度,持续帧数`);
+                    return [];
+                }
+                
+                const [headAngle, leftArm, rightArm, duration] = parts.map(Number);
+                
+                // 验证数值范围
+                if (isNaN(headAngle) || isNaN(leftArm) || isNaN(rightArm) || isNaN(duration)) {
+                    alert(`第${i+1}行包含非数字值`);
+                    return [];
+                }
+                
+                if (headAngle < -45 || headAngle > 45) {
+                    alert(`第${i+1}行头部角度超出范围（-45到45）`);
+                    return [];
+                }
+                
+                if ((leftArm < -90 || leftArm > 90) || (rightArm < -90 || rightArm > 90)) {
+                    alert(`第${i+1}行手部角度超出范围（-90到90）`);
+                    return [];
+                }
+                
+                if (duration < 1) {
+                    alert(`第${i+1}行持续帧数必须大于0`);
+                    return [];
+                }
+                
+                actions.push({
+                    headAngle,
+                    leftArm,
+                    rightArm,
+                    duration
+                });
+            }
+            
+            return actions;
+        }
+        
+        // 播放舞蹈动画
+        function animate() {
+            if (actionIndex >= danceActions.length) {
+                // 循环播放
+                actionIndex = 0;
+                frameCounter = 0;
+            }
+            
+            const currentAction = danceActions[actionIndex];
+            
+            // 设置当前动作的角度
+            person.head.angle = currentAction.headAngle;
+            person.arm.leftAngle = currentAction.leftArm;
+            person.arm.rightAngle = currentAction.rightArm;
+            
+            // 绘制人物
+            drawPerson();
+            
+            // 更新帧计数器
+            frameCounter++;
+            currentFrame++;
+            
+            // 更新状态显示
+            statusDisplay.textContent = `当前帧: ${currentFrame} | 动作: ${actionIndex+1}/${danceActions.length} | 帧计数: ${frameCounter}/${currentAction.duration}`;
+            
+            // 检查是否需要切换到下一个动作
+            if (frameCounter >= currentAction.duration) {
+                actionIndex++;
+                frameCounter = 0;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // 开始播放
+        function startDance() {
+            // 停止当前动画
+            stopDance();
+            
+            // 解析脚本
+            danceActions = parseScript(scriptTextarea.value);
+            
+            if (danceActions.length === 0) {
+                statusDisplay.textContent = '脚本解析失败，请检查格式';
+                return;
+            }
+            
+            // 重置计数器
+            currentFrame = 0;
+            actionIndex = 0;
+            frameCounter = 0;
+            
+            // 开始动画
+            statusDisplay.textContent = '播放中...';
+            animate();
+        }
+        
+        // 停止播放
+        function stopDance() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            statusDisplay.textContent = '已停止';
+            // 重置人物位置
+            person.head.angle = 0;
+            person.arm.leftAngle = 0;
+            person.arm.rightAngle = 0;
+            drawPerson();
+        }
+        
+        // 清空脚本
+        function clearScript() {
+            scriptTextarea.value = '';
+            stopDance();
+        }
+        
+        // 加载示例脚本
+        function loadExample(type) {
+            stopDance();
+            
+            let script = '';
+            
+            switch(type) {
+                case 'basic':
+                    script = `# 基础静止动作
+0,0,0,60
+# 头部右转，左手前摆
+30,-30,0,30
+# 头部左转，右手前摆
+-30,0,-30,30
+# 恢复原位
+0,0,0,60`;
+                    break;
+                    
+                case 'wave':
+                    script = `# 挥手动作组合
+0,0,0,10
+0,0,-20,5
+0,0,-40,5
+0,0,-60,5
+0,0,-40,5
+0,0,-20,5
+0,0,0,5
+0,0,-20,5
+0,0,-40,5
+0,0,-60,5
+0,0,-40,5
+0,0,-20,5
+0,0,0,20`;
+                    break;
+                    
+                case 'nod':
+                    script = `# 点头动作
+0,0,0,10
+10,0,0,5
+20,0,0,5
+10,0,0,5
+0,0,0,5
+-10,0,0,5
+-20,0,0,5
+-10,0,0,5
+0,0,0,10
+10,0,0,5
+20,0,0,5
+10,0,0,5
+0,0,0,30`;
+                    break;
+                    
+                case 'dance':
+                    script = `# 舞蹈组合动作
+0,0,0,10
+15,-30,30,10
+-15,30,-30,10
+15,-30,30,10
+-15,30,-30,10
+0,0,0,5
+30,-60,60,10
+-30,60,-60,10
+30,-60,60,10
+-30,60,-60,10
+0,-30,-30,5
+0,0,0,5
+0,30,30,5
+0,0,0,20`;
+                    break;
+            }
+            
+            scriptTextarea.value = script;
+        }
+        
+        // 初始化
+        window.onload = initCanvas;
+    </script>
+</body>
+</html>
