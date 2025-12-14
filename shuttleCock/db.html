@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>火柴人踢毽子动画</title>
+    <title>火柴人踢毽子动画 - 面向对象重构版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -24,19 +24,6 @@
             }
         }
     </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
-            .shadow-soft {
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            }
-            .animate-pulse-slow {
-                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            }
-        }
-    </style>
     <style>
         body {
             overflow: hidden;
@@ -49,39 +36,29 @@
             transition: background-color 0.3s ease;
         }
         
-        /* 动画关键帧 */
         @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.7;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
         
-        /* 平滑滚动 */
-        html {
-            scroll-behavior: smooth;
-        }
-        
-        /* 工具条按钮hover效果 */
         .toolbar-btn {
             transition: all 0.2s ease;
         }
         
         .toolbar-btn:hover {
             transform: translateY(-2px);
-            background-color: #165DFF/90;
+            background-color: rgba(22, 93, 255, 0.9);
         }
     </style>
 </head>
 <body class="bg-neutral font-inter text-dark antialiased">
     <!-- 顶部工具条 -->
-    <header class="bg-white shadow-soft z-10 relative">
+    <header class="bg-white shadow-md z-10 relative">
         <div class="container mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <i class="fa fa-paint-brush text-primary text-xl"></i>
-                <h1 class="text-lg font-semibold text-dark">火柴人动画 <span class="text-primary">踢毽子</span></h1>
+                <h1 class="text-lg font-semibold text-dark">火柴人动画
+                     <span class="text-primary">踢毽子v0.12</span></h1>
             </div>
             
             <div class="flex items-center gap-2">
@@ -106,12 +83,12 @@
     </header>
 
     <!-- 中间画布区域 -->
-    <main class="flex-1 flex items-center justify-center min-h-[calc(100vh-112px)]">
-        <canvas id="animationCanvas" class="rounded-lg shadow-soft max-w-full max-h-full"></canvas>
+    <main class="flex-1 flex items-center justify-center min-h-[calc(100vh-112px)] p-4">
+        <canvas id="animationCanvas" class="rounded-lg shadow-lg max-w-full max-h-full"></canvas>
     </main>
 
     <!-- 底部状态栏 -->
-    <footer class="bg-white shadow-soft z-10 py-2">
+    <footer class="bg-white shadow-md z-10 py-2">
         <div class="container mx-auto px-4 flex items-center justify-between">
             <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2">
@@ -123,7 +100,7 @@
                     <span id="animationSpeed" class="text-sm">速度: 1.0x</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <i class="fa fa-circle text-green-500 animate-pulse-slow"></i>
+                    <i class="fa fa-circle text-green-500 animate-pulse"></i>
                     <span class="text-sm">动画运行中</span>
                 </div>
             </div>
@@ -134,401 +111,554 @@
     </footer>
 
     <script>
-        // 获取Canvas元素和上下文
-        const canvas = document.getElementById('animationCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // 设置Canvas尺寸
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            const containerWidth = container.clientWidth - 40;
-            const containerHeight = container.clientHeight - 40;
-            
-            // 保持16:9比例
-            const aspectRatio = 16/9;
-            let width = containerWidth;
-            let height = containerHeight;
-            
-            if (width / height > aspectRatio) {
-                width = height * aspectRatio;
-            } else {
-                height = width / aspectRatio;
+        // ==================== 常量定义 ====================
+        const CTHEMES = {
+            LIGHT: {
+                bg: '#F5F7FA',
+                stickman1: '#165DFF',
+                stickman2: '#FF7D00',
+                shuttlecock: '#E63946',
+                ground: '#333333'
+            },
+            DARK: {
+                bg: '#1D2129',
+                stickman1: '#4080FF',
+                stickman2: '#FF9500',
+                shuttlecock: '#FF5252',
+                ground: '#666666'
+            }
+        };
+
+        const CANIMATION_SETTINGS = {
+            INITIAL_SPEED: 1.0,
+            MIN_SPEED: 0.5,
+            MAX_SPEED: 2.0,
+            SPEED_STEP: 0.1,
+            GROUND_HEIGHT_RATIO: 0.7,
+            CANVAS_ASPECT_RATIO: 16/9
+        };
+
+        // ==================== 工具类 ====================
+        class CUtils {
+            static formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+                return `${minutes}:${secs}`;
             }
             
-            canvas.width = width;
-            canvas.height = height;
-            
-            // 重新初始化位置
-            initPositions();
+            static clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
         }
-        
-        // 窗口大小变化时调整Canvas
-        window.addEventListener('resize', resizeCanvas);
-        
-        // 动画参数
-        let animationSpeed = 1.0;
-        let animationTime = 0;
-        let animationFrame;
-        let lastTimestamp = 0;
-        
-        // 颜色主题
-        let isDarkMode = false;
-        const lightTheme = {
-            bg: '#F5F7FA',
-            stickman1: '#165DFF',
-            stickman2: '#FF7D00',
-            shuttlecock: '#E63946',
-            ground: '#333333'
-        };
-        const darkTheme = {
-            bg: '#1D2129',
-            stickman1: '#4080FF',
-            stickman2: '#FF9500',
-            shuttlecock: '#FF5252',
-            ground: '#666666'
-        };
-        let currentTheme = lightTheme;
-        
-        // 火柴人1属性
-        const stickman1 = {
-            x: 0,
-            y: 0,
-            height: 100,
-            width: 20,
-            legAngle: 0,
-            armAngle: 0,
-            kickPhase: 0,
-            headSize: 20
-        };
-        
-        // 火柴人2属性
-        const stickman2 = {
-            x: 0,
-            y: 0,
-            height: 100,
-            width: 20,
-            legAngle: 0,
-            armAngle: 0,
-            kickPhase: 0,
-            headSize: 20
-        };
-        
-        // 毽子属性
-        const shuttlecock = {
-            x: 0,
-            y: 0,
-            size: 15,
-            velocityX: 0,
-            velocityY: 0,
-            gravity: 0.2,
-            bounce: -0.8,
-            airResistance: 0.99,
-            owner: 1 // 1: 火柴人1, 2: 火柴人2
-        };
-        
-        // 初始化位置
-        function initPositions() {
-            // 火柴人1位置 (左侧)
-            stickman1.x = canvas.width * 0.3;
-            stickman1.y = canvas.height * 0.7 - stickman1.height;
+
+        // ==================== 火柴人类 ====================
+        class CStickman {
+            constructor(x, y, color, isRightSide = false) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.isRightSide = isRightSide;
+                
+                this.height = 100;
+                this.width = 20;
+                this.headSize = 20;
+                this.legAngle = 0;
+                this.armAngle = 0;
+                this.kickPhase = 0;
+                this.kickSpeed = 0.02;
+            }
             
-            // 火柴人2位置 (右侧)
-            stickman2.x = canvas.width * 0.7;
-            stickman2.y = canvas.height * 0.7 - stickman2.height;
+            update(deltaTime, speedFactor) {
+                this.kickPhase += this.kickSpeed * speedFactor;
+                this.legAngle = Math.sin(this.kickPhase * 2) * 0.8;
+                this.armAngle = Math.sin(this.kickPhase * 2 + Math.PI) * 0.6;
+            }
             
-            // 毽子初始位置 (中间)
-            shuttlecock.x = canvas.width * 0.5;
-            shuttlecock.y = canvas.height * 0.5;
-            shuttlecock.velocityX = 3 * (Math.random() > 0.5 ? 1 : -1);
-            shuttlecock.velocityY = -8;
-            
-            // 重置动画时间
-            animationTime = 0;
-        }
-        
-        // 绘制火柴人
-        function drawStickman(stickman, color) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            
-            // 头部
-            ctx.beginPath();
-            ctx.arc(stickman.x, stickman.y, stickman.headSize, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // 身体
-            ctx.beginPath();
-            ctx.moveTo(stickman.x, stickman.y + stickman.headSize);
-            ctx.lineTo(stickman.x, stickman.y + stickman.height);
-            ctx.stroke();
-            
-            // 左腿
-            const legLength = stickman.height * 0.6;
-            const legX1 = stickman.x;
-            const legY1 = stickman.y + stickman.height;
-            const legX2 = legX1 + Math.sin(stickman.legAngle) * legLength;
-            const legY2 = legY1 + Math.cos(stickman.legAngle) * legLength;
-            
-            ctx.beginPath();
-            ctx.moveTo(legX1, legY1);
-            ctx.lineTo(legX2, legY2);
-            ctx.stroke();
-            
-            // 右腿 (稍微分开)
-            const legX3 = legX1 + Math.sin(-stickman.legAngle * 0.8) * legLength * 0.9;
-            const legY3 = legY1 + Math.cos(-stickman.legAngle * 0.8) * legLength * 0.9;
-            
-            ctx.beginPath();
-            ctx.moveTo(legX1, legY1);
-            ctx.lineTo(legX3, legY3);
-            ctx.stroke();
-            
-            // 左臂
-            const armLength = stickman.height * 0.5;
-            const armX1 = stickman.x;
-            const armY1 = stickman.y + stickman.height * 0.3;
-            const armX2 = armX1 + Math.sin(stickman.armAngle) * armLength;
-            const armY2 = armY1 + Math.cos(stickman.armAngle) * armLength;
-            
-            ctx.beginPath();
-            ctx.moveTo(armX1, armY1);
-            ctx.lineTo(armX2, armY2);
-            ctx.stroke();
-            
-            // 右臂
-            const armX3 = armX1 + Math.sin(-stickman.armAngle * 0.9) * armLength;
-            const armY3 = armY1 + Math.cos(-stickman.armAngle * 0.9) * armLength;
-            
-            ctx.beginPath();
-            ctx.moveTo(armX1, armY1);
-            ctx.lineTo(armX3, armY3);
-            ctx.stroke();
-            
-            // 面部 (简单的眼睛和嘴巴)
-            ctx.fillStyle = color;
-            // 左眼
-            ctx.beginPath();
-            ctx.arc(stickman.x - stickman.headSize * 0.3, stickman.y - stickman.headSize * 0.2, 2, 0, Math.PI * 2);
-            ctx.fill();
-            // 右眼
-            ctx.beginPath();
-            ctx.arc(stickman.x + stickman.headSize * 0.3, stickman.y - stickman.headSize * 0.2, 2, 0, Math.PI * 2);
-            ctx.fill();
-            // 嘴巴
-            ctx.beginPath();
-            ctx.arc(stickman.x, stickman.y + stickman.headSize * 0.2, stickman.headSize * 0.3, 0, Math.PI);
-            ctx.stroke();
-        }
-        
-        // 绘制毽子
-        function drawShuttlecock() {
-            // 毽子主体
-            ctx.fillStyle = currentTheme.shuttlecock;
-            ctx.beginPath();
-            ctx.arc(shuttlecock.x, shuttlecock.y, shuttlecock.size, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 毽子羽毛
-            ctx.strokeStyle = currentTheme.shuttlecock;
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
-                const featherLength = shuttlecock.size * 1.5;
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                
+                // 头部
                 ctx.beginPath();
-                ctx.moveTo(shuttlecock.x, shuttlecock.y);
-                ctx.lineTo(
-                    shuttlecock.x + Math.cos(angle) * featherLength,
-                    shuttlecock.y + Math.sin(angle) * featherLength
-                );
+                ctx.arc(this.x, this.y, this.headSize, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 身体
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + this.headSize);
+                ctx.lineTo(this.x, this.y + this.height);
+                ctx.stroke();
+                
+                // 腿部
+                this.drawLegs(ctx);
+                
+                // 手臂
+                this.drawArms(ctx);
+                
+                // 面部
+                this.drawFace(ctx);
+                
+                ctx.restore();
+            }
+            
+            drawLegs(ctx) {
+                const legLength = this.height * 0.6;
+                const legX1 = this.x;
+                const legY1 = this.y + this.height;
+                
+                // 左腿
+                const legAngle = this.isRightSide ? -this.legAngle * 0.8 : this.legAngle;
+                const legX2 = legX1 + Math.sin(legAngle) * legLength;
+                const legY2 = legY1 + Math.cos(legAngle) * legLength;
+                
+                ctx.beginPath();
+                ctx.moveTo(legX1, legY1);
+                ctx.lineTo(legX2, legY2);
+                ctx.stroke();
+                
+                // 右腿
+                const legAngle2 = this.isRightSide ? this.legAngle * 0.9 : -this.legAngle * 0.8;
+                const legX3 = legX1 + Math.sin(legAngle2) * legLength * 0.9;
+                const legY3 = legY1 + Math.cos(legAngle2) * legLength * 0.9;
+                
+                ctx.beginPath();
+                ctx.moveTo(legX1, legY1);
+                ctx.lineTo(legX3, legY3);
                 ctx.stroke();
             }
-        }
-        
-        // 绘制地面
-        function drawGround() {
-            ctx.strokeStyle = currentTheme.ground;
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(0, canvas.height * 0.7);
-            ctx.lineTo(canvas.width, canvas.height * 0.7);
-            ctx.stroke();
-        }
-        
-        // 更新火柴人动画
-        function updateStickmen(deltaTime) {
-            const speedFactor = deltaTime * animationSpeed;
             
-            // 火柴人1踢腿动画
-            stickman1.kickPhase += 0.02 * speedFactor;
-            stickman1.legAngle = Math.sin(stickman1.kickPhase * 2) * 0.8;
-            stickman1.armAngle = Math.sin(stickman1.kickPhase * 2 + Math.PI) * 0.6;
-            
-            // 火柴人2踢腿动画
-            stickman2.kickPhase += 0.02 * speedFactor;
-            stickman2.legAngle = Math.sin(stickman2.kickPhase * 2 + Math.PI) * 0.8;
-            stickman2.armAngle = Math.sin(stickman2.kickPhase * 2) * 0.6;
-            
-            // 检测踢毽子碰撞
-            checkKickCollision();
-        }
-        
-        // 检测踢毽子碰撞
-        function checkKickCollision() {
-            // 火柴人1的脚位置
-            const foot1X = stickman1.x + Math.sin(stickman1.legAngle) * stickman1.height * 0.6;
-            const foot1Y = stickman1.y + stickman1.height + Math.cos(stickman1.legAngle) * stickman1.height * 0.6;
-            
-            // 火柴人2的脚位置
-            const foot2X = stickman2.x + Math.sin(stickman2.legAngle) * stickman2.height * 0.6;
-            const foot2Y = stickman2.y + stickman2.height + Math.cos(stickman2.legAngle) * stickman2.height * 0.6;
-            
-            // 检测火柴人1踢到毽子
-            const distance1 = Math.hypot(shuttlecock.x - foot1X, shuttlecock.y - foot1Y);
-            if (distance1 < shuttlecock.size + 10 && shuttlecock.owner !== 1) {
-                shuttlecock.velocityX = (shuttlecock.x - foot1X) * 0.3 + 4;
-                shuttlecock.velocityY = (shuttlecock.y - foot1Y) * 0.3 - 8;
-                shuttlecock.owner = 1;
-            }
-            
-            // 检测火柴人2踢到毽子
-            const distance2 = Math.hypot(shuttlecock.x - foot2X, shuttlecock.y - foot2Y);
-            if (distance2 < shuttlecock.size + 10 && shuttlecock.owner !== 2) {
-                shuttlecock.velocityX = (shuttlecock.x - foot2X) * 0.3 - 4;
-                shuttlecock.velocityY = (shuttlecock.y - foot2Y) * 0.3 - 8;
-                shuttlecock.owner = 2;
-            }
-        }
-        
-        // 更新毽子物理
-        function updateShuttlecock(deltaTime) {
-            const speedFactor = deltaTime * animationSpeed;
-            
-            // 应用重力
-            shuttlecock.velocityY += shuttlecock.gravity * speedFactor;
-            
-            // 应用空气阻力
-            shuttlecock.velocityX *= shuttlecock.airResistance;
-            shuttlecock.velocityY *= shuttlecock.airResistance;
-            
-            // 更新位置
-            shuttlecock.x += shuttlecock.velocityX * speedFactor;
-            shuttlecock.y += shuttlecock.velocityY * speedFactor;
-            
-            // 地面碰撞检测
-            const groundY = canvas.height * 0.7 - shuttlecock.size;
-            if (shuttlecock.y > groundY) {
-                shuttlecock.y = groundY;
-                shuttlecock.velocityY *= shuttlecock.bounce;
+            drawArms(ctx) {
+                const armLength = this.height * 0.5;
+                const armX1 = this.x;
+                const armY1 = this.y + this.height * 0.3;
                 
-                // 随机反弹方向
-                if (Math.abs(shuttlecock.velocityX) < 1) {
-                    shuttlecock.velocityX = (Math.random() - 0.5) * 4;
+                // 左臂
+                const armAngle = this.isRightSide ? -this.armAngle * 0.9 : this.armAngle;
+                const armX2 = armX1 + Math.sin(armAngle) * armLength;
+                const armY2 = armY1 + Math.cos(armAngle) * armLength;
+                
+                ctx.beginPath();
+                ctx.moveTo(armX1, armY1);
+                ctx.lineTo(armX2, armY2);
+                ctx.stroke();
+                
+                // 右臂
+                const armAngle2 = this.isRightSide ? this.armAngle : -this.armAngle * 0.9;
+                const armX3 = armX1 + Math.sin(armAngle2) * armLength;
+                const armY3 = armY1 + Math.cos(armAngle2) * armLength;
+                
+                ctx.beginPath();
+                ctx.moveTo(armX1, armY1);
+                ctx.lineTo(armX3, armY3);
+                ctx.stroke();
+            }
+            
+            drawFace(ctx) {
+                ctx.fillStyle = this.color;
+                
+                // 眼睛
+                const eyeOffsetX = this.headSize * 0.3;
+                const eyeOffsetY = -this.headSize * 0.2;
+                
+                ctx.beginPath();
+                ctx.arc(this.x - eyeOffsetX, this.y + eyeOffsetY, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(this.x + eyeOffsetX, this.y + eyeOffsetY, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 嘴巴
+                ctx.beginPath();
+                ctx.arc(this.x, this.y + this.headSize * 0.2, this.headSize * 0.3, 0, Math.PI);
+                ctx.stroke();
+            }
+            
+            getFootPosition() {
+                const legLength = this.height * 0.6;
+                const legAngle = this.isRightSide ? -this.legAngle * 0.8 : this.legAngle;
+                return {
+                    x: this.x + Math.sin(legAngle) * legLength,
+                    y: this.y + this.height + Math.cos(legAngle) * legLength
+                };
+            }
+            
+            reposition(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+        // ==================== 毽子类 ====================
+        class CShuttlecock {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = 15;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.color = CTHEMES.LIGHT.shuttlecock;
+                
+                this.gravity = 0.2;
+                this.bounce = -0.8;
+                this.airResistance = 0.99;
+                this.owner = 1; // 1: 火柴人1, 2: 火柴人2
+            }
+            
+            update(deltaTime, speedFactor, canvasWidth, canvasHeight) {
+                const groundY = canvasHeight * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO - this.size;
+                
+                // 应用物理
+                this.velocityY += this.gravity * speedFactor;
+                this.velocityX *= this.airResistance;
+                this.velocityY *= this.airResistance;
+                
+                // 更新位置
+                this.x += this.velocityX * speedFactor;
+                this.y += this.velocityY * speedFactor;
+                
+                // 边界碰撞检测
+                this.handleBoundaryCollision(groundY, canvasWidth);
+            }
+            
+            handleBoundaryCollision(groundY, canvasWidth) {
+                // 地面碰撞
+                if (this.y > groundY) {
+                    this.y = groundY;
+                    this.velocityY *= this.bounce;
+                    
+                    if (Math.abs(this.velocityX) < 1) {
+                        this.velocityX = (Math.random() - 0.5) * 4;
+                    }
+                }
+                
+                // 左右边界
+                if (this.x < this.size) {
+                    this.x = this.size;
+                    this.velocityX *= this.bounce;
+                } else if (this.x > canvasWidth - this.size) {
+                    this.x = canvasWidth - this.size;
+                    this.velocityX *= this.bounce;
                 }
             }
             
-            // 左右边界碰撞
-            if (shuttlecock.x < shuttlecock.size) {
-                shuttlecock.x = shuttlecock.size;
-                shuttlecock.velocityX *= shuttlecock.bounce;
-            } else if (shuttlecock.x > canvas.width - shuttlecock.size) {
-                shuttlecock.x = canvas.width - shuttlecock.size;
-                shuttlecock.velocityX *= shuttlecock.bounce;
+            draw(ctx) {
+                ctx.save();
+                
+                // 毽子主体
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 羽毛
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                const featherLength = this.size * 1.5;
+                
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(
+                        this.x + Math.cos(angle) * featherLength,
+                        this.y + Math.sin(angle) * featherLength
+                    );
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+            
+            isCollidingWithStickman(stickman) {
+                const foot = stickman.getFootPosition();
+                const distance = Math.hypot(this.x - foot.x, this.y - foot.y);
+                return distance < this.size + 10;
+            }
+            
+            kick(stickman, owner) {
+                const foot = stickman.getFootPosition();
+                const directionMultiplier = stickman.isRightSide ? -1 : 1;
+                
+                this.velocityX = (this.x - foot.x) * 0.3 + 4 * directionMultiplier;
+                this.velocityY = (this.y - foot.y) * 0.3 - 8;
+                this.owner = owner;
+            }
+            
+            reposition(x, y, velocityX = null, velocityY = -8) {
+                this.x = x;
+                this.y = y;
+                this.velocityX = velocityX !== null ? velocityX : (Math.random() > 0.5 ? 3 : -3);
+                this.velocityY = velocityY;
+            }
+            
+            setColor(color) {
+                this.color = color;
             }
         }
-        
-        // 动画循环
-        function animate(timestamp) {
-            if (!lastTimestamp) lastTimestamp = timestamp;
-            const deltaTime = timestamp - lastTimestamp;
-            lastTimestamp = timestamp;
+
+        // ==================== 动画控制器类 ====================
+        class CAnimationController {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.stickmen = [];
+                this.shuttlecock = null;
+                this.animationSpeed = CANIMATION_SETTINGS.INITIAL_SPEED;
+                this.animationTime = 0;
+                this.lastTimestamp = 0;
+                this.animationFrame = null;
+                this.isDarkMode = false;
+                this.currentTheme = CTHEMES.LIGHT;
+                
+                this.init();
+            }
             
-            // 清空画布
-            ctx.fillStyle = currentTheme.bg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            init() {
+                this.resizeCanvas();
+                this.createGameObjects();
+                this.setupEventListeners();
+                this.startAnimation();
+            }
             
-            // 绘制地面
-            drawGround();
+            createGameObjects() {
+                // 创建两个火柴人
+                const stickman1 = new CStickman(
+                    this.canvas.width * 0.3,
+                    this.canvas.height * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO - 100,
+                    this.currentTheme.stickman1,
+                    false
+                );
+                
+                const stickman2 = new CStickman(
+                    this.canvas.width * 0.7,
+                    this.canvas.height * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO - 100,
+                    this.currentTheme.stickman2,
+                    true
+                );
+                
+                this.stickmen = [stickman1, stickman2];
+                
+                // 创建毽子
+                this.shuttlecock = new CShuttlecock(
+                    this.canvas.width * 0.5,
+                    this.canvas.height * 0.5
+                );
+                
+                // 设置毽子初始速度
+                this.shuttlecock.velocityX = 3 * (Math.random() > 0.5 ? 1 : -1);
+                this.shuttlecock.velocityY = -8;
+                this.shuttlecock.setColor(this.currentTheme.shuttlecock);
+            }
             
-            // 更新动画
-            updateStickmen(deltaTime / 16); // 基准16ms/帧
-            updateShuttlecock(deltaTime / 16);
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                const aspectRatio = CANIMATION_SETTINGS.CANVAS_ASPECT_RATIO;
+                let width = containerWidth;
+                let height = containerHeight;
+                
+                if (width / height > aspectRatio) {
+                    width = height * aspectRatio;
+                } else {
+                    height = width / aspectRatio;
+                }
+                
+                this.canvas.width = width;
+                this.canvas.height = height;
+                
+                this.repositionObjects();
+            }
             
-            // 绘制元素
-            drawStickman(stickman1, currentTheme.stickman1);
-            drawStickman(stickman2, currentTheme.stickman2);
-            drawShuttlecock();
+            repositionObjects() {
+                if (this.stickmen.length >= 2 && this.shuttlecock) {
+                    this.stickmen[0].reposition(
+                        this.canvas.width * 0.3,
+                        this.canvas.height * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO - 100
+                    );
+                    
+                    this.stickmen[1].reposition(
+                        this.canvas.width * 0.7,
+                        this.canvas.height * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO - 100
+                    );
+                    
+                    this.shuttlecock.reposition(
+                        this.canvas.width * 0.5,
+                        this.canvas.height * 0.5
+                    );
+                }
+            }
             
-            // 更新动画时间
-            animationTime += deltaTime / 1000;
-            updateStatusBar();
+            update(deltaTime) {
+                const speedFactor = deltaTime * this.animationSpeed;
+                
+                // 更新火柴人
+                this.stickmen.forEach(stickman => {
+                    stickman.update(deltaTime, speedFactor);
+                });
+                
+                // 更新毽子
+                this.shuttlecock.update(
+                    deltaTime,
+                    speedFactor,
+                    this.canvas.width,
+                    this.canvas.height
+                );
+                
+                // 检测碰撞
+                this.checkCollisions();
+            }
             
-            // 继续动画
-            animationFrame = requestAnimationFrame(animate);
-        }
-        
-        // 更新状态栏
-        function updateStatusBar() {
-            // 格式化时间
-            const minutes = Math.floor(animationTime / 60).toString().padStart(2, '0');
-            const seconds = Math.floor(animationTime % 60).toString().padStart(2, '0');
-            document.getElementById('animationTime').textContent = `动画时长: ${minutes}:${seconds}`;
+            checkCollisions() {
+                // 检测火柴人1踢毽子
+                if (this.shuttlecock.isCollidingWithStickman(this.stickmen[0]) && this.shuttlecock.owner !== 1) {
+                    this.shuttlecock.kick(this.stickmen[0], 1);
+                }
+                
+                // 检测火柴人2踢毽子
+                if (this.shuttlecock.isCollidingWithStickman(this.stickmen[1]) && this.shuttlecock.owner !== 2) {
+                    this.shuttlecock.kick(this.stickmen[1], 2);
+                }
+            }
             
-            // 更新速度显示
-            document.getElementById('animationSpeed').textContent = `速度: ${animationSpeed.toFixed(1)}x`;
-        }
-        
-        // 切换深色/浅色模式
-        function toggleTheme() {
-            isDarkMode = !isDarkMode;
-            currentTheme = isDarkMode ? darkTheme : lightTheme;
+            draw() {
+                // 清空画布
+                this.ctx.fillStyle = this.currentTheme.bg;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制地面
+                this.drawGround();
+                
+                // 绘制所有对象
+                this.shuttlecock.draw(this.ctx);
+                this.stickmen.forEach(stickman => stickman.draw(this.ctx));
+            }
             
-            // 更新按钮文本
-            const bgToggleBtn = document.getElementById('bgToggle');
-            const icon = bgToggleBtn.querySelector('i');
-            const text = bgToggleBtn.querySelector('span');
+            drawGround() {
+                this.ctx.strokeStyle = this.currentTheme.ground;
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.canvas.height * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO);
+                this.ctx.lineTo(this.canvas.width, this.canvas.height * CANIMATION_SETTINGS.GROUND_HEIGHT_RATIO);
+                this.ctx.stroke();
+            }
             
-            if (isDarkMode) {
-                icon.className = 'fa fa-sun-o';
-                text.textContent = '浅色模式';
-                canvas.style.backgroundColor = currentTheme.bg;
-            } else {
-                icon.className = 'fa fa-moon-o';
-                text.textContent = '深色模式';
-                canvas.style.backgroundColor = currentTheme.bg;
+            animate(timestamp) {
+                if (!this.lastTimestamp) this.lastTimestamp = timestamp;
+                const deltaTime = timestamp - this.lastTimestamp;
+                this.lastTimestamp = timestamp;
+                
+                this.update(deltaTime / 16);
+                this.draw();
+                
+                this.animationTime += deltaTime / 1000;
+                this.updateStatusBar();
+                
+                this.animationFrame = requestAnimationFrame(this.animate.bind(this));
+            }
+            
+            startAnimation() {
+                this.animationTime = 0;
+                this.lastTimestamp = 0;
+                cancelAnimationFrame(this.animationFrame);
+                this.animate(0);
+            }
+            
+            restart() {
+                this.animationTime = 0;
+                this.repositionObjects();
+                this.startAnimation();
+            }
+            
+            setSpeed(speed) {
+                this.animationSpeed = CUtils.clamp(
+                    speed,
+                    CANIMATION_SETTINGS.MIN_SPEED,
+                    CANIMATION_SETTINGS.MAX_SPEED
+                );
+                this.updateStatusBar();
+            }
+            
+            adjustSpeed(amount) {
+                this.setSpeed(this.animationSpeed + amount);
+            }
+            
+            toggleTheme() {
+                this.isDarkMode = !this.isDarkMode;
+                this.currentTheme = this.isDarkMode ? CTHEMES.DARK : CTHEMES.LIGHT;
+                
+                // 更新毽子颜色
+                this.shuttlecock.setColor(this.currentTheme.shuttlecock);
+                
+                // 更新火柴人颜色
+                this.stickmen[0].color = this.currentTheme.stickman1;
+                this.stickmen[1].color = this.currentTheme.stickman2;
+                
+                // 更新UI
+                this.updateThemeUI();
+            }
+            
+            updateThemeUI() {
+                const bgToggleBtn = document.getElementById('bgToggle');
+                const icon = bgToggleBtn.querySelector('i');
+                const text = bgToggleBtn.querySelector('span');
+                
+                if (this.isDarkMode) {
+                    icon.className = 'fa fa-sun-o';
+                    text.textContent = '浅色模式';
+                } else {
+                    icon.className = 'fa fa-moon-o';
+                    text.textContent = '深色模式';
+                }
+                
+                this.canvas.style.backgroundColor = this.currentTheme.bg;
+            }
+            
+            updateStatusBar() {
+                document.getElementById('animationTime').textContent = 
+                    `动画时长: ${CUtils.formatTime(this.animationTime)}`;
+                document.getElementById('animationSpeed').textContent = 
+                    `速度: ${this.animationSpeed.toFixed(1)}x`;
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+                
+                document.getElementById('bgToggle').addEventListener('click', () => {
+                    this.toggleTheme();
+                });
+                
+                document.getElementById('speedUp').addEventListener('click', () => {
+                    this.adjustSpeed(CANIMATION_SETTINGS.SPEED_STEP);
+                });
+                
+                document.getElementById('speedDown').addEventListener('click', () => {
+                    this.adjustSpeed(-CANIMATION_SETTINGS.SPEED_STEP);
+                });
+                
+                document.getElementById('restart').addEventListener('click', () => {
+                    this.restart();
+                });
             }
         }
-        
-        // 调整动画速度
-        function adjustSpeed(direction) {
-            if (direction === 'up') {
-                animationSpeed = Math.min(animationSpeed + 0.1, 2.0);
-            } else {
-                animationSpeed = Math.max(animationSpeed - 0.1, 0.5);
-            }
-            updateStatusBar();
-        }
-        
-        // 重置动画
-        function restartAnimation() {
-            cancelAnimationFrame(animationFrame);
-            lastTimestamp = 0;
-            initPositions();
-            animate(0);
-        }
-        
-        // 绑定事件监听
-        document.getElementById('bgToggle').addEventListener('click', toggleTheme);
-        document.getElementById('speedUp').addEventListener('click', () => adjustSpeed('up'));
-        document.getElementById('speedDown').addEventListener('click', () => adjustSpeed('down'));
-        document.getElementById('restart').addEventListener('click', restartAnimation);
-        
-        // 初始化
-        resizeCanvas();
-        animate(0);
+
+        // ==================== 初始化应用 ====================
+        let animationController;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            animationController = new CAnimationController('animationCanvas');
+        });
     </script>
 </body>
 </html>
+
 <!--
-重构代码生成相关的类。
+所有类名C开头。
 -->
