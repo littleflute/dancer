@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四季自然生长游戏</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义样式 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            spring: '#86efac',
+            summer: '#4ade80',
+            autumn: '#fbbf24',
+            winter: '#bfdbfe',
+            primary: '#166534',
+          },
+          fontFamily: {
+            game: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .canvas-container {
+        position: relative;
+        overflow: hidden;
+      }
+      .season-transition {
+        transition: background-color 2s ease;
+      }
+      .btn-game {
+        @apply px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 active:scale-95;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-game h-screen flex flex-col overflow-hidden">
+  <!-- 顶部工具栏 -->
+  <header class="bg-primary text-white p-3 shadow-lg z-10">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <i class="fa fa-leaf text-xl"></i>
+        <h1 class="text-xl font-bold">四季自然生长</h1>
+      </div>
+      
+      <div class="flex gap-3">
+        <button id="playBtn" class="btn-game bg-green-600 hover:bg-green-700">
+          <i class="fa fa-play mr-1"></i> 开始
+        </button>
+        <button id="pauseBtn" class="btn-game bg-amber-600 hover:bg-amber-700">
+          <i class="fa fa-pause mr-1"></i> 暂停
+        </button>
+        <button id="resetBtn" class="btn-game bg-red-600 hover:bg-red-700">
+          <i class="fa fa-refresh mr-1"></i> 重置
+        </button>
+        <button id="speedBtn" class="btn-game bg-blue-600 hover:bg-blue-700">
+          <i class="fa fa-tachometer mr-1"></i> 速度: 1x
+        </button>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <div class="flex items-center">
+          <span class="mr-2">季节:</span>
+          <div id="seasonDisplay" class="w-16 h-8 rounded-full bg-spring flex items-center justify-center font-bold">
+            春季
+          </div>
+        </div>
+        <div class="flex items-center">
+          <span class="mr-2">年份:</span>
+          <span id="yearDisplay" class="bg-gray-700 px-3 py-1 rounded">1</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 游戏画布区域 -->
+  <main class="flex-1 canvas-container season-transition bg-spring" id="gameContainer">
+    <canvas id="gameCanvas" class="w-full h-full"></canvas>
+    
+    <!-- 游戏提示 -->
+    <div class="absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded-lg">
+      <p><i class="fa fa-info-circle mr-1"></i> 观察四季变化和植物生长周期</p>
+      <p class="text-xs mt-1">树木会在几个季节后死亡，种子会重新发芽</p>
+    </div>
+  </main>
+
+  <!-- 底部状态栏 -->
+  <footer class="bg-gray-800 text-white p-2 shadow-lg">
+    <div class="container mx-auto flex justify-between items-center">
+      <div>
+        <span id="plantCount" class="px-2 py-1 bg-gray-700 rounded">植物: 0</span>
+        <span id="treeCount" class="px-2 py-1 bg-gray-700 rounded ml-2">树木: 0</span>
+        <span id="seedCount" class="px-2 py-1 bg-gray-700 rounded ml-2">种子: 0</span>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <div class="flex items-center">
+          <div class="w-4 h-4 bg-spring rounded-full mr-1"></div>
+          <span>春季</span>
+        </div>
+        <div class="flex items-center">
+          <div class="w-4 h-4 bg-summer rounded-full mr-1"></div>
+          <span>夏季</span>
+        </div>
+        <div class="flex items-center">
+          <div class="w-4 h-4 bg-autumn rounded-full mr-1"></div>
+          <span>秋季</span>
+        </div>
+        <div class="flex items-center">
+          <div class="w-4 h-4 bg-winter rounded-full mr-1"></div>
+          <span>冬季</span>
+        </div>
+      </div>
+      
+      <div>
+        <span id="gameStatus" class="px-2 py-1 bg-green-700 rounded">运行中</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 游戏主类
+    class NatureGame {
+      constructor() {
+        // 画布初始化
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.gameContainer = document.getElementById('gameContainer');
+        
+        // 游戏状态
+        this.isRunning = true;
+        this.speed = 1;
+        this.year = 1;
+        this.seasonIndex = 0;
+        this.seasons = ['春季', '夏季', '秋季', '冬季'];
+        this.seasonColors = ['bg-spring', 'bg-summer', 'bg-autumn', 'bg-winter'];
+        this.seasonBgColors = ['#86efac', '#4ade80', '#fbbf24', '#bfdbfe'];
+        
+        // 植物配置
+        this.plants = [];
+        this.trees = [];
+        this.seeds = [];
+        this.maxPlants = 50;
+        this.maxTrees = 20;
+        this.treeLifespan = 12; // 树木生命周期（季节数）
+        
+        // DOM元素
+        this.seasonDisplay = document.getElementById('seasonDisplay');
+        this.yearDisplay = document.getElementById('yearDisplay');
+        this.plantCount = document.getElementById('plantCount');
+        this.treeCount = document.getElementById('treeCount');
+        this.seedCount = document.getElementById('seedCount');
+        this.gameStatus = document.getElementById('gameStatus');
+        this.speedBtn = document.getElementById('speedBtn');
+        
+        // 初始化
+        this.resizeCanvas();
+        this.initEventListeners();
+        this.initPlants();
+        
+        // 开始游戏循环
+        this.gameLoop();
+        setInterval(() => {
+          if (this.isRunning) {
+            this.changeSeason();
+          }
+        }, 5000 / this.speed);
+      }
+      
+      // 调整画布大小
+      resizeCanvas() {
+        const container = this.gameContainer;
+        this.canvas.width = container.clientWidth;
+        this.canvas.height = container.clientHeight;
+        this.redraw();
+      }
+      
+      // 初始化事件监听
+      initEventListeners() {
+        // 窗口大小调整
+        window.addEventListener('resize', () => this.resizeCanvas());
+        
+        // 按钮事件
+        document.getElementById('playBtn').addEventListener('click', () => {
+          this.isRunning = true;
+          this.gameStatus.textContent = '运行中';
+          this.gameStatus.className = 'px-2 py-1 bg-green-700 rounded';
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+          this.isRunning = false;
+          this.gameStatus.textContent = '已暂停';
+          this.gameStatus.className = 'px-2 py-1 bg-amber-700 rounded';
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+          this.resetGame();
+        });
+        
+        document.getElementById('speedBtn').addEventListener('click', () => {
+          this.speed = this.speed === 4 ? 1 : this.speed * 2;
+          this.speedBtn.innerHTML = `<i class="fa fa-tachometer mr-1"></i> 速度: ${this.speed}x`;
+        });
+        
+        // 点击画布添加植物
+        this.canvas.addEventListener('click', (e) => {
+          if (this.isRunning && this.plants.length < this.maxPlants) {
+            const rect = this.canvas.getBoundingClientRect();
+            this.addPlant(e.clientX - rect.left, e.clientY - rect.top);
+          }
+        });
+      }
+      
+      // 初始化植物
+      initPlants() {
+        // 随机生成初始植物
+        const initialPlants = Math.floor(Math.random() * 10) + 5;
+        for (let i = 0; i < initialPlants; i++) {
+          const x = Math.random() * this.canvas.width;
+          const y = Math.random() * this.canvas.height;
+          this.addPlant(x, y);
+        }
+        
+        // 随机生成初始树木
+        const initialTrees = Math.floor(Math.random() * 5) + 2;
+        for (let i = 0; i < initialTrees; i++) {
+          const x = Math.random() * this.canvas.width;
+          const y = Math.random() * this.canvas.height;
+          this.addTree(x, y);
+        }
+        
+        this.updateCounters();
+      }
+      
+      // 添加植物
+      addPlant(x, y) {
+        const plant = {
+          x,
+          y,
+          size: Math.random() * 10 + 5,
+          growth: 0,
+          age: 0,
+          isGrowing: true,
+          color: this.getSeasonColor()
+        };
+        this.plants.push(plant);
+        this.updateCounters();
+      }
+      
+      // 添加树木
+      addTree(x, y) {
+        if (this.trees.length >= this.maxTrees) return;
+        
+        const tree = {
+          x,
+          y,
+          trunkWidth: Math.random() * 10 + 10,
+          crownSize: Math.random() * 30 + 30,
+          age: 0,
+          health: 100,
+          seasonCreated: this.seasonIndex,
+          yearCreated: this.year
+        };
+        this.trees.push(tree);
+        this.updateCounters();
+      }
+      
+      // 添加种子
+      addSeed(x, y) {
+        const seed = {
+          x,
+          y,
+          size: Math.random() * 3 + 2,
+          age: 0,
+          germinateChance: Math.random()
+        };
+        this.seeds.push(seed);
+        this.updateCounters();
+      }
+      
+      // 改变季节
+      changeSeason() {
+        // 更新季节索引
+        this.seasonIndex = (this.seasonIndex + 1) % 4;
+        
+        // 更新年份
+        if (this.seasonIndex === 0) {
+          this.year++;
+          this.yearDisplay.textContent = this.year;
+        }
+        
+        // 更新UI
+        this.seasonDisplay.textContent = this.seasons[this.seasonIndex];
+        this.seasonDisplay.className = `w-16 h-8 rounded-full ${this.seasonColors[this.seasonIndex]} flex items-center justify-center font-bold`;
+        this.gameContainer.className = `flex-1 canvas-container season-transition ${this.seasonColors[this.seasonIndex]}`;
+        
+        // 根据季节更新植物
+        this.updatePlantsForSeason();
+        
+        // 更新树木状态
+        this.updateTrees();
+        
+        // 更新种子状态
+        this.updateSeeds();
+      }
+      
+      // 根据季节更新植物
+      updatePlantsForSeason() {
+        // 春季：生长加速
+        if (this.seasonIndex === 0) {
+          this.plants.forEach(plant => {
+            plant.growth += 0.5;
+            plant.size += Math.random() * 2 + 1;
+            plant.color = this.getSeasonColor();
+          });
+          
+          // 春季有几率从种子发芽
+          this.seeds.forEach((seed, index) => {
+            if (Math.random() < 0.3) {
+              this.addPlant(seed.x, seed.y);
+              this.seeds.splice(index, 1);
+            }
+          });
+        }
+        
+        // 夏季：生长
+        else if (this.seasonIndex === 1) {
+          this.plants.forEach(plant => {
+            plant.growth += 0.3;
+            plant.size += Math.random() * 1 + 0.5;
+            plant.color = this.getSeasonColor();
+            
+            // 夏季有几率长成树
+            if (plant.growth > 10 && Math.random() < 0.1) {
+              this.addTree(plant.x, plant.y);
+              this.plants.splice(this.plants.indexOf(plant), 1);
+            }
+          });
+        }
+        
+        // 秋季：部分植物结种子
+        else if (this.seasonIndex === 2) {
+          this.plants.forEach(plant => {
+            plant.age++;
+            plant.color = this.getSeasonColor();
+            
+            // 秋季结果实/种子
+            if (Math.random() < 0.2) {
+              this.addSeed(plant.x + (Math.random() * 20 - 10), plant.y + (Math.random() * 20 - 10));
+            }
+          });
+        }
+        
+        // 冬季：部分植物休眠/死亡
+        else if (this.seasonIndex === 3) {
+          this.plants.forEach((plant, index) => {
+            plant.color = this.getSeasonColor();
+            
+            // 冬季有几率死亡
+            if (plant.age > 3 && Math.random() < 0.1) {
+              this.plants.splice(index, 1);
+            }
+          });
+        }
+        
+        this.updateCounters();
+      }
+      
+      // 更新树木状态
+      updateTrees() {
+        this.trees.forEach((tree, index) => {
+          tree.age++;
+          
+          // 计算树的年龄（季节数）
+          const treeAgeInSeasons = (this.year - tree.yearCreated) * 4 + (this.seasonIndex - tree.seasonCreated);
+          
+          // 树木健康随年龄下降
+          tree.health = 100 - (treeAgeInSeasons / this.treeLifespan) * 100;
+          
+          // 冬季树木健康额外下降
+          if (this.seasonIndex === 3) {
+            tree.health -= 5;
+          }
+          
+          // 树木死亡
+          if (tree.health <= 0 || treeAgeInSeasons >= this.treeLifespan) {
+            // 死亡时产生种子
+            for (let i = 0; i < Math.floor(Math.random() * 5) + 2; i++) {
+              this.addSeed(
+                tree.x + (Math.random() * 50 - 25),
+                tree.y + (Math.random() * 50 - 25)
+              );
+            }
+            this.trees.splice(index, 1);
+          }
+          // 生长阶段
+          else if (treeAgeInSeasons < 4) {
+            // 幼树期
+            tree.crownSize += Math.random() * 2;
+            tree.trunkWidth += Math.random() * 0.5;
+          }
+        });
+        
+        this.updateCounters();
+      }
+      
+      // 更新种子状态
+      updateSeeds() {
+        this.seeds.forEach((seed, index) => {
+          seed.age++;
+          
+          // 种子过期
+          if (seed.age > 8) {
+            this.seeds.splice(index, 1);
+          }
+        });
+        
+        this.updateCounters();
+      }
+      
+      // 获取季节对应的颜色
+      getSeasonColor() {
+        switch (this.seasonIndex) {
+          case 0: return `rgb(${Math.floor(Math.random() * 50 + 34)}, ${Math.floor(Math.random() * 50 + 174)}, ${Math.floor(Math.random() * 50 + 68)})`; // 春绿色
+          case 1: return `rgb(${Math.floor(Math.random() * 50 + 22)}, ${Math.floor(Math.random() * 50 + 120)}, ${Math.floor(Math.random() * 50 + 44)})`; // 夏绿色
+          case 2: return `rgb(${Math.floor(Math.random() * 50 + 202)}, ${Math.floor(Math.random() * 50 + 130)}, ${Math.floor(Math.random() * 50 + 36)})`; // 秋黄色
+          case 3: return `rgb(${Math.floor(Math.random() * 50 + 180)}, ${Math.floor(Math.random() * 50 + 180)}, ${Math.floor(Math.random() * 50 + 200)})`; // 冬白色
+        }
+      }
+      
+      // 绘制植物
+      drawPlant(plant) {
+        this.ctx.fillStyle = plant.color;
+        this.ctx.beginPath();
+        this.ctx.arc(plant.x, plant.y, plant.size, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // 绘制植物茎干
+        this.ctx.strokeStyle = '#65a30d';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(plant.x, plant.y + plant.size);
+        this.ctx.lineTo(plant.x, plant.y + plant.size + 10);
+        this.ctx.stroke();
+      }
+      
+      // 绘制树木
+      drawTree(tree) {
+        // 绘制树干
+        this.ctx.fillStyle = '#78350f';
+        this.ctx.fillRect(
+          tree.x - tree.trunkWidth / 2,
+          tree.y + tree.crownSize / 2,
+          tree.trunkWidth,
+          tree.crownSize
+        );
+        
+        // 根据季节和健康绘制树冠
+        let crownColor;
+        if (this.seasonIndex === 0) crownColor = '#4d7c0f'; // 春
+        else if (this.seasonIndex === 1) crownColor = '#3f6212'; // 夏
+        else if (this.seasonIndex === 2) crownColor = '#b45309'; // 秋
+        else crownColor = '#e5e7eb'; // 冬
+        
+        // 健康度影响颜色
+        const healthFactor = tree.health / 100;
+        const rgb = hexToRgb(crownColor);
+        crownColor = `rgba(${rgb.r * healthFactor}, ${rgb.g * healthFactor}, ${rgb.b * healthFactor}, ${healthFactor})`;
+        
+        // 绘制树冠
+        this.ctx.fillStyle = crownColor;
+        this.ctx.beginPath();
+        this.ctx.arc(tree.x, tree.y, tree.crownSize, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
+      // 绘制种子
+      drawSeed(seed) {
+        this.ctx.fillStyle = '#92400e';
+        this.ctx.beginPath();
+        this.ctx.ellipse(seed.x, seed.y, seed.size, seed.size / 2, Math.PI / 4, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
+      // 重绘所有元素
+      redraw() {
+        // 清空画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 绘制背景渐变
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, this.seasonBgColors[this.seasonIndex]);
+        gradient.addColorStop(1, darkenColor(this.seasonBgColors[this.seasonIndex], 0.3));
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 绘制植物
+        this.plants.forEach(plant => this.drawPlant(plant));
+        
+        // 绘制树木
+        this.trees.forEach(tree => this.drawTree(tree));
+        
+        // 绘制种子
+        this.seeds.forEach(seed => this.drawSeed(seed));
+      }
+      
+      // 更新计数器
+      updateCounters() {
+        this.plantCount.textContent = `植物: ${this.plants.length}`;
+        this.treeCount.textContent = `树木: ${this.trees.length}`;
+        this.seedCount.textContent = `种子: ${this.seeds.length}`;
+      }
+      
+      // 重置游戏
+      resetGame() {
+        this.plants = [];
+        this.trees = [];
+        this.seeds = [];
+        this.year = 1;
+        this.seasonIndex = 0;
+        this.speed = 1;
+        
+        this.yearDisplay.textContent = '1';
+        this.seasonDisplay.textContent = '春季';
+        this.seasonDisplay.className = 'w-16 h-8 rounded-full bg-spring flex items-center justify-center font-bold';
+        this.gameContainer.className = 'flex-1 canvas-container season-transition bg-spring';
+        this.speedBtn.innerHTML = `<i class="fa fa-tachometer mr-1"></i> 速度: 1x`;
+        
+        this.initPlants();
+        this.redraw();
+      }
+      
+      // 游戏主循环
+      gameLoop() {
+        if (this.isRunning) {
+          this.redraw();
+          
+          // 轻微动画效果
+          this.plants.forEach(plant => {
+            plant.x += (Math.random() - 0.5) * 0.2;
+            plant.y += (Math.random() - 0.5) * 0.2;
+          });
+          
+          this.seeds.forEach(seed => {
+            seed.x += (Math.random() - 0.5) * 0.1;
+            seed.y += (Math.random() - 0.5) * 0.1;
+          });
+        }
+        
+        requestAnimationFrame(() => this.gameLoop());
+      }
+    }
+    
+    // 辅助函数：十六进制转RGB
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 0, g: 0, b: 0 };
+    }
+    
+    // 辅助函数：加深颜色
+    function darkenColor(color, factor) {
+      const rgb = hexToRgb(color.replace('bg-', '#').replace('spring', '86efac').replace('summer', '4ade80').replace('autumn', 'fbbf24').replace('winter', 'bfdbfe'));
+      return `rgb(${Math.floor(rgb.r * (1 - factor))}, ${Math.floor(rgb.g * (1 - factor))}, ${Math.floor(rgb.b * (1 - factor))})`;
+    }
+    
+    // 启动游戏
+    window.addEventListener('load', () => {
+      new NatureGame();
+    });
+  </script>
+</body>
+</html>
