@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四季生态模拟器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        
+        .toolbar {
+            background: rgba(30, 30, 46, 0.9);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            border-bottom: 2px solid #4cc9f0;
+        }
+        
+        .game-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .game-title h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, #4cc9f0, #4361ee);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+        
+        .season-icon {
+            font-size: 2rem;
+            animation: pulse 2s infinite;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            background: linear-gradient(135deg, #4361ee, #3a0ca3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .season-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-width: 200px;
+        }
+        
+        .season-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .season-progress-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .season-progress-bar {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        
+        .game-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        canvas {
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background: #000;
+        }
+        
+        .status-bar {
+            background: rgba(30, 30, 46, 0.9);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            border-top: 2px solid #4361ee;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4cc9f0;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #a0a0c0;
+        }
+        
+        .instructions {
+            color: #a0a0c0;
+            font-size: 0.9rem;
+            max-width: 300px;
+        }
+        
+        .instructions b {
+            color: #4cc9f0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @media (max-width: 768px) {
+            .toolbar, .status-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+            
+            .stats {
+                justify-content: center;
+            }
+            
+            canvas {
+                width: 95% !important;
+                height: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 工具条 -->
+    <div class="toolbar">
+        <div class="game-title">
+            <h1>四季生态模拟器</h1>
+            <div class="season-icon" id="seasonIcon">🌱</div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" id="pauseBtn">
+                <span>⏸️</span>
+                <span>暂停</span>
+            </button>
+            <button class="control-btn" id="resetBtn">
+                <span>🔄</span>
+                <span>重置世界</span>
+            </button>
+            <button class="control-btn" id="speedBtn">
+                <span>⚡</span>
+                <span>速度: 1x</span>
+            </button>
+        </div>
+        
+        <div class="season-info">
+            <div class="season-name">
+                <span id="seasonName">春季</span>
+                <span id="seasonCycle">(第1次循环)</span>
+            </div>
+            <div class="season-progress-container">
+                <div class="season-progress-bar" id="seasonProgressBar"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 游戏画布容器 -->
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    
+    <!-- 状态栏 -->
+    <div class="status-bar">
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="treeCount">0</div>
+                <div class="stat-label">树木数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="flowerCount">0</div>
+                <div class="stat-label">花草数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="seedCount">0</div>
+                <div class="stat-label">种子数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="grassCount">0</div>
+                <div class="stat-label">草地数量</div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <b>操作说明：</b> 点击大地添加植物 | 不同季节植物生长不同 | 树木会产生种子
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置和常量 ====================
+        const SEASONS = [
+            { 
+                name: "春季", 
+                icon: "🌱", 
+                duration: 19000, // 19秒
+                skyColors: [
+                    { r: 173, g: 216, b: 230 }, // 浅蓝
+                    { r: 135, g: 206, b: 235 }, // 天蓝
+                    { r: 100, g: 149, b: 237 }  // 亮蓝
+                ],
+                groundColors: [
+                    { r: 139, g: 69, b: 19 },   // 棕色
+                    { r: 160, g: 82, b: 45 },   // 深棕色
+                    { r: 139, g: 69, b: 19 }    // 棕色
+                ],
+                plantColor: { r: 34, g: 139, b: 34 } // 绿色
+            },
+            { 
+                name: "夏季", 
+                icon: "☀️", 
+                duration: 18000, // 18秒
+                skyColors: [
+                    { r: 100, g: 149, b: 237 }, // 亮蓝
+                    { r: 30, g: 144, b: 255 },  // 道奇蓝
+                    { r: 0, g: 0, b: 139 }      // 深蓝
+                ],
+                groundColors: [
+                    { r: 160, g: 82, b: 45 },   // 深棕色
+                    { r: 101, g: 67, b: 33 },   // 棕色
+                    { r: 160, g: 82, b: 45 }    // 深棕色
+                ],
+                plantColor: { r: 0, g: 100, b: 0 } // 深绿色
+            },
+            { 
+                name: "秋季", 
+                icon: "🍂", 
+                duration: 20000, // 20秒
+                skyColors: [
+                    { r: 0, g: 0, b: 139 },     // 深蓝
+                    { r: 255, g: 140, b: 0 },   // 深橙色
+                    { r: 178, g: 34, b: 34 }    // 砖红色
+                ],
+                groundColors: [
+                    { r: 210, g: 180, b: 140 }, // 浅棕色
+                    { r: 184, g: 134, b: 11 },   // 暗金色
+                    { r: 210, g: 180, b: 140 }  // 浅棕色
+                ],
+                plantColor: { r: 218, g: 165, b: 32 } // 金黄色
+            },
+            { 
+                name: "冬季", 
+                icon: "❄️", 
+                duration: 19000, // 19秒
+                skyColors: [
+                    { r: 178, g: 34, b: 34 },   // 砖红色
+                    { r: 105, g: 105, b: 105 }, // 暗灰色
+                    { r: 173, g: 216, b: 230 }  // 浅蓝
+                ],
+                groundColors: [
+                    { r: 240, g: 255, b: 255 }, // 雪白色
+                    { r: 220, g: 240, b: 240 }, // 淡雪色
+                    { r: 240, g: 255, b: 255 }  // 雪白色
+                ],
+                plantColor: { r: 211, g: 211, b: 211 } // 浅灰色
+            }
+        ];
+        
+        const OBJECT_TYPES = {
+            TREE: 'tree',
+            FLOWER: 'flower',
+            GRASS: 'grass',
+            SEED: 'seed'
+        };
+        
+        const SKY_HEIGHT_RATIO = 0.65; // 天空高度比例
+        
+        // 游戏状态
+        let gameState = {
+            paused: false,
+            speed: 1,
+            currentSeason: 0,
+            seasonProgress: 0,
+            seasonCycle: 0,
+            objects: [],
+            particles: [],
+            clouds: [],
+            lastUpdate: 0,
+            canvasWidth: 0,
+            canvasHeight: 0,
+            skyHeight: 0,
+            groundHeight: 0
+        };
+        
+        // 画布和上下文
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getStateContext ? canvas.getStateContext('2d') : canvas.getContext('2d');
+        
+        // ==================== 游戏对象基类 ====================
+        class GameObject {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.age = 0;
+                this.health = 100;
+                this.maxAge = 100 + Math.random() * 100;
+                this.size = 10 + Math.random() * 20;
+                this.color = { r: 0, g: 100, b: 0 };
+                this.growthRate = 0.5 + Math.random() * 0.5;
+            }
+            
+            update(deltaTime, seasonIndex) {
+                this.age += deltaTime * 0.001;
+                
+                // 根据季节影响健康度
+                if (seasonIndex === 0) { // 春季
+                    this.health += deltaTime * 0.002 * this.growthRate;
+                } else if (seasonIndex === 1) { // 夏季
+                    this.health += deltaTime * 0.001 * this.growthRate;
+                } else if (seasonIndex === 2) { // 秋季
+                    this.health -= deltaTime * 0.001;
+                } else { // 冬季
+                    this.health -= deltaTime * 0.002;
+                }
+                
+                // 限制健康度范围
+                this.health = Math.max(0, Math.min(100, this.health));
+                
+                // 根据健康度调整大小
+                this.size = 10 + (this.health / 100) * 30;
+                
+                return this.health > 0 && this.age < this.maxAge;
+            }
+            
+            draw(ctx, seasonColor) {
+                // 由子类实现
+            }
+        }
+        
+        // ==================== 树木类 ====================
+        class Tree extends GameObject {
+            constructor(x, y) {
+                super(x, y, OBJECT_TYPES.TREE);
+                this.maxAge = 200 + Math.random() * 200;
+                this.trunkHeight = this.size * 1.5;
+                this.crownRadius = this.size * 0.8;
+                this.seedCooldown = 0;
+            }
+            
+            update(deltaTime, seasonIndex) {
+                const isAlive = super.update(deltaTime, seasonIndex);
+                
+                // 秋季产生种子
+                if (seasonIndex === 2 && this.age > 50 && this.health > 30) {
+                    this.seedCooldown -= deltaTime;
+                    if (this.seedCooldown <= 0) {
+                        this.seedCooldown = 2000 + Math.random() * 3000;
+                        if (Math.random() < 0.1) { // 10%概率产生种子
+                            return { type: 'seed', x: this.x, y: this.y };
+                        }
+                    }
+                }
+                
+                return isAlive;
+            }
+            
+            draw(ctx, seasonColor) {
+                // 树干
+                ctx.fillStyle = `rgb(101, 67, 33)`;
+                ctx.fillRect(this.x - 3, this.y - this.trunkHeight, 6, this.trunkHeight);
+                
+                // 树冠
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y - this.trunkHeight - 5, 1,
+                    this.x, this.y - this.trunkHeight - 5, this.crownRadius
+                );
+                
+                // 根据健康度调整颜色
+                const healthFactor = this.health / 100;
+                const r = Math.floor(seasonColor.r * healthFactor);
+                const g = Math.floor(seasonColor.g * healthFactor);
+                const b = Math.floor(seasonColor.b * healthFactor);
+                
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.8)`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.3)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y - this.trunkHeight, this.crownRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 健康度指示器
+                ctx.fillStyle = this.health > 50 ? 'green' : (this.health > 20 ? 'orange' : 'red');
+                ctx.fillRect(this.x - 10, this.y - this.trunkHeight - 15, 20, 3);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(this.x - 10, this.y - this.trunkHeight - 15, 20 * (this.health / 100), 3);
+            }
+        }
+        
+        // ==================== 花草类 ====================
+        class Flower extends GameObject {
+            constructor(x, y) {
+                super(x, y, OBJECT_TYPES.FLOWER);
+                this.maxAge = 50 + Math.random() * 50;
+                this.petalCount = 5 + Math.floor(Math.random() * 5);
+                this.petalColors = [
+                    { r: 255, g: 0, b: 0 },     // 红
+                    { r: 255, g: 105, b: 180 }, // 粉
+                    { r: 255, g: 215, b: 0 },   // 金
+                    { r: 138, g: 43, b: 226 }   // 紫
+                ];
+                this.petalColor = this.petalColors[Math.floor(Math.random() * this.petalColors.length)];
+            }
+            
+            update(deltaTime, seasonIndex) {
+                // 花草在冬季会更快凋谢
+                if (seasonIndex === 3) {
+                    this.health -= deltaTime * 0.005;
+                }
+                
+                return super.update(deltaTime, seasonIndex);
+            }
+            
+            draw(ctx, seasonColor) {
+                const petalSize = this.size * 0.4;
+                
+                // 花茎
+                ctx.strokeStyle = 'green';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x, this.y - this.size);
+                ctx.stroke();
+                
+                // 花瓣
+                for (let i = 0; i < this.petalCount; i++) {
+                    const angle = (i * 2 * Math.PI) / this.petalCount;
+                    const petalX = this.x + Math.cos(angle) * petalSize;
+                    const petalY = this.y - this.size + Math.sin(angle) * petalSize;
+                    
+                    ctx.fillStyle = `rgba(${this.petalColor.r}, ${this.petalColor.g}, ${this.petalColor.b}, ${this.health/100})`;
+                    ctx.beginPath();
+                    ctx.ellipse(petalX, petalY, petalSize/2, petalSize/3, angle, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 花蕊
+                ctx.fillStyle = 'yellow';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y - this.size, petalSize/3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // ==================== 草地类 ====================
+        class Grass extends GameObject {
+            constructor(x, y) {
+                super(x, y, OBJECT_TYPES.GRASS);
+                this.maxAge = 30 + Math.random() * 20;
+                this.bladeCount = 3 + Math.floor(Math.random() * 5);
+            }
+            
+            update(deltaTime, seasonIndex) {
+                // 草地在冬季生长停滞
+                if (seasonIndex === 3) {
+                    return super.update(deltaTime * 0.1, seasonIndex);
+                }
+                return super.update(deltaTime, seasonIndex);
+            }
+            
+            draw(ctx, seasonColor) {
+                for (let i = 0; i < this.bladeCount; i++) {
+                    const offset = (i - this.bladeCount/2) * 3;
+                    const bladeHeight = this.size * (0.5 + Math.random() * 0.5);
+                    
+                    ctx.strokeStyle = `rgba(${seasonColor.r}, ${seasonColor.g}, ${seasonColor.b}, ${this.health/100})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + offset, this.y);
+                    ctx.quadraticCurveTo(
+                        this.x + offset + 2, this.y - bladeHeight/2,
+                        this.x + offset, this.y - bladeHeight
+                    );
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // ==================== 种子类 ====================
+        class Seed extends GameObject {
+            constructor(x, y) {
+                super(x, y, OBJECT_TYPES.SEED);
+                this.maxAge = 40 + Math.random() * 20;
+                this.velocityY = 0;
+                this.gravity = 0.2;
+                this.onGround = false;
+            }
+            
+            update(deltaTime, seasonIndex) {
+                if (!this.onGround) {
+                    this.velocityY += this.gravity;
+                    this.y += this.velocityY;
+                    
+                    // 检查是否碰到地面
+                    if (this.y >= gameState.groundHeight) {
+                        this.y = gameState.groundHeight;
+                        this.onGround = true;
+                    }
+                } else {
+                    // 春季发芽
+                    if (seasonIndex === 0 && Math.random() < 0.01) {
+                        return { type: 'sprout', x: this.x, y: this.y };
+                    }
+                }
+                
+                this.age += deltaTime * 0.001;
+                return this.age < this.maxAge;
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = 'saddlebrown';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 如果在地上，画一个小阴影
+                if (this.onGround) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x, this.y + 2, 4, 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // ==================== 粒子类 ====================
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'petal', 'leaf', 'snow'
+                this.size = 2 + Math.random() * 4;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 1 + 1;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = Math.random() * 0.1 - 0.05;
+                this.life = 100 + Math.random() * 100;
+                this.maxLife = this.life;
+                
+                // 设置颜色
+                if (type === 'petal') {
+                    this.color = `rgb(255, ${100 + Math.random() * 155}, ${150 + Math.random() * 105})`;
+                } else if (type === 'leaf') {
+                    this.color = `rgb(${150 + Math.random() * 105}, ${100 + Math.random() * 155}, 0)`;
+                } else { // snow
+                    this.color = 'white';
+                }
+            }
+            
+            update(deltaTime) {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.rotation += this.rotationSpeed;
+                this.life -= deltaTime * 0.1;
+                
+                return this.life > 0;
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                
+                if (this.type === 'snow') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    if (this.type === 'petal') {
+                        ctx.ellipse(0, 0, this.size, this.size/2, 0, 0, Math.PI * 2);
+                    } else { // leaf
+                        ctx.ellipse(0, 0, this.size * 1.5, this.size, 0, 0, Math.PI * 2);
+                    }
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // ==================== 云朵类 ====================
+        class Cloud {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = 20 + Math.random() * (gameState.skyHeight * 0.3);
+                this.speed = 0.2 + Math.random() * 0.3;
+                this.size = 30 + Math.random() * 40;
+                this.opacity = 0.3 + Math.random() * 0.5;
+                this.parts = [];
+                
+                // 创建云朵的各个部分
+                for (let i = 0; i < 5; i++) {
+                    this.parts.push({
+                        x: Math.random() * this.size - this.size/2,
+                        y: Math.random() * this.size/2 - this.size/4,
+                        size: this.size * (0.3 + Math.random() * 0.4)
+                    });
+                }
+            }
+            
+            update(deltaTime) {
+                this.x += this.speed;
+                if (this.x > canvas.width + 100) {
+                    this.x = -100;
+                    this.y = 20 + Math.random() * (gameState.skyHeight * 0.3);
+                }
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                
+                // 绘制云朵的各个部分
+                for (const part of this.parts) {
+                    ctx.beginPath();
+                    ctx.arc(part.x, part.y, part.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // ==================== 游戏功能函数 ====================
+        function initWorld() {
+            gameState.objects = [];
+            gameState.particles = [];
+            gameState.clouds = [];
+            gameState.seasonProgress = 0;
+            gameState.seasonCycle = 0;
+            
+            // 创建初始植物
+            for (let i = 0; i < 5; i++) {
+                const x = 50 + Math.random() * (canvas.width - 100);
+                const y = gameState.groundHeight - 20;
+                gameState.objects.push(new Tree(x, y));
+            }
+            
+            for (let i = 0; i < 10; i++) {
+                const x = 30 + Math.random() * (canvas.width - 60);
+                const y = gameState.groundHeight - 10;
+                gameState.objects.push(new Flower(x, y));
+            }
+            
+            for (let i = 0; i < 20; i++) {
+                const x = 20 + Math.random() * (canvas.width - 40);
+                const y = gameState.groundHeight;
+                gameState.objects.push(new Grass(x, y));
+            }
+            
+            // 创建初始云朵
+            for (let i = 0; i < 5; i++) {
+                gameState.clouds.push(new Cloud());
+            }
+            
+            updateStats();
+        }
+        
+        function updateSeason(deltaTime) {
+            if (gameState.paused) return;
+            
+            const seasonDuration = SEASONS[gameState.currentSeason].duration;
+            gameState.seasonProgress += deltaTime * gameState.speed;
+            
+            // 检查季节是否结束
+            if (gameState.seasonProgress >= seasonDuration) {
+                gameState.seasonProgress = 0;
+                gameState.currentSeason = (gameState.currentSeason + 1) % SEASONS.length;
+                
+                // 如果回到春季，增加循环计数
+                if (gameState.currentSeason === 0) {
+                    gameState.seasonCycle++;
+                }
+            }
+        }
+        
+        function updateObjects(deltaTime) {
+            if (gameState.paused) return;
+            
+            const newObjects = [];
+            const newParticles = [];
+            
+            // 更新云朵
+            for (const cloud of gameState.clouds) {
+                cloud.update(deltaTime);
+            }
+            
+            // 更新现有对象
+            for (const obj of gameState.objects) {
+                const result = obj.update(deltaTime, gameState.currentSeason);
+                
+                if (result === true) {
+                    newObjects.push(obj);
+                    
+                    // 树木产生种子
+                    if (obj.type === OBJECT_TYPES.TREE && result && typeof result === 'object' && result.type === 'seed') {
+                        newObjects.push(new Seed(result.x, result.y));
+                    }
+                } else if (result && typeof result === 'object' && result.type === 'sprout') {
+                    // 种子发芽
+                    if (Math.random() < 0.5) {
+                        newObjects.push(new Tree(result.x, result.y));
+                    } else {
+                        newObjects.push(new Flower(result.x, result.y));
+                    }
+                }
+            }
+            
+            // 更新粒子
+            for (const particle of gameState.particles) {
+                if (particle.update(deltaTime)) {
+                    newParticles.push(particle);
+                }
+            }
+            
+            // 添加新粒子（根据季节）
+            if (!gameState.paused) {
+                if (gameState.currentSeason === 0 && Math.random() < 0.1) { // 春季花瓣
+                    newParticles.push(new Particle(
+                        Math.random() * canvas.width,
+                        Math.random() * gameState.skyHeight * 0.5,
+                        'petal'
+                    ));
+                } else if (gameState.currentSeason === 2 && Math.random() < 0.1) { // 秋季落叶
+                    newParticles.push(new Particle(
+                        Math.random() * canvas.width,
+                        Math.random() * gameState.skyHeight * 0.5,
+                        'leaf'
+                    ));
+                } else if (gameState.currentSeason === 3 && Math.random() < 0.2) { // 冬季雪花
+                    newParticles.push(new Particle(
+                        Math.random() * canvas.width,
+                        Math.random() * gameState.skyHeight * 0.5,
+                        'snow'
+                    ));
+                }
+            }
+            
+            gameState.objects = newObjects;
+            gameState.particles = newParticles;
+        }
+        
+        function render() {
+            // 清除画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 获取当前季节颜色
+            const season = SEASONS[gameState.currentSeason];
+            const skyColor = getSeasonColor(gameState.currentSeason, gameState.seasonProgress / season.duration);
+            const groundColor = getGroundColor(gameState.currentSeason, gameState.seasonProgress / season.duration);
+            const plantColor = season.plantColor;
+            
+            // 绘制天空
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, gameState.skyHeight);
+            skyGradient.addColorStop(0, `rgb(${skyColor.r}, ${skyColor.g}, ${skyColor.b})`);
+            skyGradient.addColorStop(1, `rgb(${skyColor.r-30}, ${skyColor.g-30}, ${skyColor.b})`);
+            
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, gameState.skyHeight);
+            
+            // 绘制云朵
+            for (const cloud of gameState.clouds) {
+                cloud.draw(ctx);
+            }
+            
+            // 绘制地平线
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, gameState.skyHeight);
+            ctx.lineTo(canvas.width, gameState.skyHeight);
+            ctx.stroke();
+            
+            // 绘制大地
+            const groundGradient = ctx.createLinearGradient(0, gameState.skyHeight, 0, canvas.height);
+            groundGradient.addColorStop(0, `rgb(${groundColor.r}, ${groundColor.g}, ${groundColor.b})`);
+            groundGradient.addColorStop(1, `rgb(${groundColor.r-20}, ${groundColor.g-20}, ${groundColor.b-20})`);
+            
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, gameState.skyHeight, canvas.width, gameState.groundHeight);
+            
+            // 绘制粒子
+            for (const particle of gameState.particles) {
+                particle.draw(ctx);
+            }
+            
+            // 绘制所有对象
+            for (const obj of gameState.objects) {
+                obj.draw(ctx, plantColor);
+            }
+        }
+        
+        function gameLoop(timestamp) {
+            if (!gameState.lastUpdate) gameState.lastUpdate = timestamp;
+            const deltaTime = timestamp - gameState.lastUpdate;
+            gameState.lastUpdate = timestamp;
+            
+            updateSeason(deltaTime);
+            updateObjects(deltaTime);
+            render();
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // ==================== UI更新函数 ====================
+        function updateStats() {
+            let treeCount = 0, flowerCount = 0, seedCount = 0, grassCount = 0;
+            
+            for (const obj of gameState.objects) {
+                switch (obj.type) {
+                    case OBJECT_TYPES.TREE: treeCount++; break;
+                    case OBJECT_TYPES.FLOWER: flowerCount++; break;
+                    case OBJECT_TYPES.SEED: seedCount++; break;
+                    case OBJECT_TYPES.GRASS: grassCount++; break;
+                }
+            }
+            
+            document.getElementById('treeCount').textContent = treeCount;
+            document.getElementById('flowerCount').textContent = flowerCount;
+            document.getElementById('seedCount').textContent = seedCount;
+            document.getElementById('grassCount').textContent = grassCount;
+        }
+        
+        function updateUI() {
+            const season = SEASONS[gameState.currentSeason];
+            const progressPercent = (gameState.seasonProgress / season.duration) * 100;
+            
+            // 更新季节图标和名称
+            document.getElementById('seasonIcon').textContent = season.icon;
+            document.getElementById('seasonName').textContent = season.name;
+            document.getElementById('seasonCycle').textContent = `(第${gameState.seasonCycle + 1}次循环)`;
+            
+            // 更新进度条
+            const progressBar = document.getElementById('seasonProgressBar');
+            progressBar.style.width = `${progressPercent}%`;
+            
+            // 设置进度条颜色
+            if (gameState.currentSeason === 0) {
+                progressBar.style.background = 'linear-gradient(90deg, #4CAF50, #8BC34A)';
+            } else if (gameState.currentSeason === 1) {
+                progressBar.style.background = 'linear-gradient(90deg, #FF9800, #FFC107)';
+            } else if (gameState.currentSeason === 2) {
+                progressBar.style.background = 'linear-gradient(90deg, #F44336, #FF9800)';
+            } else {
+                progressBar.style.background = 'linear-gradient(90deg, #2196F3, #03A9F4)';
+            }
+            
+            // 更新速度按钮
+            document.getElementById('speedBtn').innerHTML = `<span>⚡</span><span>速度: ${gameState.speed}x</span>`;
+            
+            // 更新统计
+            updateStats();
+        }
+        
+        // ==================== 工具函数 ====================
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            gameState.canvasWidth = canvas.width;
+            gameState.canvasHeight = canvas.height;
+            gameState.skyHeight = canvas.height * SKY_HEIGHT_RATIO;
+            gameState.groundHeight = canvas.height - gameState.skyHeight;
+        }
+        
+        function getSeasonColor(seasonIndex, progress) {
+            const season = SEASONS[seasonIndex];
+            const colors = season.skyColors;
+            
+            if (progress < 0.5) {
+                const t = progress * 2;
+                return {
+                    r: Math.floor(colors[0].r + (colors[1].r - colors[0].r) * t),
+                    g: Math.floor(colors[0].g + (colors[1].g - colors[0].g) * t),
+                    b: Math.floor(colors[0].b + (colors[1].b - colors[0].b) * t)
+                };
+            } else {
+                const t = (progress - 0.5) * 2;
+                return {
+                    r: Math.floor(colors[1].r + (colors[2].r - colors[1].r) * t),
+                    g: Math.floor(colors[1].g + (colors[2].g - colors[1].g) * t),
+                    b: Math.floor(colors[1].b + (colors[2].b - colors[1].b) * t)
+                };
+            }
+        }
+        
+        function getGroundColor(seasonIndex, progress) {
+            const season = SEASONS[seasonIndex];
+            const colors = season.groundColors;
+            
+            if (progress < 0.5) {
+                const t = progress * 2;
+                return {
+                    r: Math.floor(colors[0].r + (colors[1].r - colors[0].r) * t),
+                    g: Math.floor(colors[0].g + (colors[1].g - colors[0].g) * t),
+                    b: Math.floor(colors[0].b + (colors[1].b - colors[0].b) * t)
+                };
+            } else {
+                const t = (progress - 0.5) * 2;
+                return {
+                    r: Math.floor(colors[1].r + (colors[2].r - colors[1].r) * t),
+                    g: Math.floor(colors[1].g + (colors[2].g - colors[1].g) * t),
+                    b: Math.floor(colors[1].b + (colors[2].b - colors[1].b) * t)
+                };
+            }
+        }
+        
+        // ==================== 事件处理 ====================
+        function setupEventListeners() {
+            // 暂停/继续按钮
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                gameState.paused = !gameState.paused;
+                document.getElementById('pauseBtn').innerHTML = gameState.paused 
+                    ? '<span>▶️</span><span>继续</span>' 
+                    : '<span>⏸️</span><span>暂停</span>';
+            });
+            
+            // 重置按钮
+            document.getElementById('resetBtn').addEventListener('click', initWorld);
+            
+            // 速度切换按钮
+            document.getElementById('speedBtn').addEventListener('click', () => {
+                const speeds = [1, 2, 4];
+                const currentIndex = speeds.indexOf(gameState.speed);
+                gameState.speed = speeds[(currentIndex + 1) % speeds.length];
+            });
+            
+            // 画布点击事件
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 只允许在大地区域添加植物
+                if (y > gameState.skyHeight) {
+                    const plantTypes = ['tree', 'flower', 'grass'];
+                    const randomType = plantTypes[Math.floor(Math.random() * plantTypes.length)];
+                    
+                    switch (randomType) {
+                        case 'tree':
+                            gameState.objects.push(new Tree(x, y));
+                            break;
+                        case 'flower':
+                            gameState.objects.push(new Flower(x, y));
+                            break;
+                        case 'grass':
+                            gameState.objects.push(new Grass(x, y));
+                            break;
+                    }
+                    
+                    updateStats();
+                }
+            });
+            
+            // 窗口大小调整
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                render();
+            });
+        }
+        
+        // ==================== 初始化 ====================
+        function initGame() {
+            resizeCanvas();
+            initWorld();
+            setupEventListeners();
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 启动游戏
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
