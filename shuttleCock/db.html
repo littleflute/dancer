@@ -65,14 +65,32 @@
             transition: opacity 0.3s ease;
         }
         
-        .keyboard-hint span {
-            display: inline-block;
-            background: #165DFF;
+        .keyboard-hint .player1,
+        .keyboard-hint .player2 {
             padding: 2px 8px;
             border-radius: 4px;
-            margin: 0 4px;
-            min-width: 20px;
-            text-align: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            border: none;
+            min-width: 28px;
+        }
+        
+        .keyboard-hint .player1:active,
+        .keyboard-hint .player2:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+        
+        .keyboard-hint .player1.pressed,
+        .keyboard-hint .player2.pressed {
+            background: #000 !important;
+            transform: scale(0.95);
+        }
+        
+        .keyboard-hint .player1 { 
+            background: #165DFF; 
         }
         
         .keyboard-hint .player2 {
@@ -117,8 +135,8 @@
         
         <!-- 新增：键盘控制提示 -->
         <div class="keyboard-hint">
-            玩家1控制: <span>F</span> 左 <span>G</span> 右 | 
-            玩家2控制: <span class="player2">J</span> 左 <span class="player2">K</span> 右
+            玩家1控制: <button class="player1" id="btnF">F</button> 左 <button class="player1" id="btnG">G</button> 右 | 
+            玩家2控制: <button class="player2" id="btnJ">J</button> 左 <button class="player2" id="btnK">K</button> 右
         </div>
     </main>
 
@@ -538,6 +556,8 @@
                 this.setupEventListeners();
                 // 新增：设置键盘事件监听
                 this.setupKeyboardListeners();
+                // 新增：设置按钮控制监听
+                this.setupButtonControls();
                 this.startAnimation();
             }
             
@@ -861,6 +881,8 @@
                     const key = e.key.toLowerCase();
                     if (this.keyStates.hasOwnProperty(key)) {
                         this.keyStates[key] = true;
+                        // 更新按钮视觉状态
+                        this.updateButtonVisualState(key, true);
                         e.preventDefault(); // 防止页面滚动
                     }
                 });
@@ -870,6 +892,8 @@
                     const key = e.key.toLowerCase();
                     if (this.keyStates.hasOwnProperty(key)) {
                         this.keyStates[key] = false;
+                        // 更新按钮视觉状态
+                        this.updateButtonVisualState(key, false);
                         e.preventDefault();
                     }
                 });
@@ -878,8 +902,78 @@
                 window.addEventListener('blur', () => {
                     Object.keys(this.keyStates).forEach(key => {
                         this.keyStates[key] = false;
+                        this.updateButtonVisualState(key, false);
                     });
                 });
+            }
+            
+            // 新增：设置按钮控制监听
+            setupButtonControls() {
+                const buttons = {
+                    'btnF': 'f',
+                    'btnG': 'g',
+                    'btnJ': 'j',
+                    'btnK': 'k'
+                };
+                
+                // 为每个按钮添加鼠标事件
+                Object.entries(buttons).forEach(([btnId, key]) => {
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        // 鼠标按下
+                        btn.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            this.keyStates[key] = true;
+                            this.updateButtonVisualState(key, true);
+                        });
+                        
+                        // 鼠标释放
+                        btn.addEventListener('mouseup', () => {
+                            this.keyStates[key] = false;
+                            this.updateButtonVisualState(key, false);
+                        });
+                        
+                        // 鼠标离开
+                        btn.addEventListener('mouseleave', () => {
+                            this.keyStates[key] = false;
+                            this.updateButtonVisualState(key, false);
+                        });
+                        
+                        // 触摸事件支持
+                        btn.addEventListener('touchstart', (e) => {
+                            e.preventDefault();
+                            this.keyStates[key] = true;
+                            this.updateButtonVisualState(key, true);
+                        });
+                        
+                        btn.addEventListener('touchend', () => {
+                            this.keyStates[key] = false;
+                            this.updateButtonVisualState(key, false);
+                        });
+                    }
+                });
+            }
+            
+            // 新增：更新按钮视觉状态
+            updateButtonVisualState(key, isPressed) {
+                const btnIds = {
+                    'f': 'btnF',
+                    'g': 'btnG',
+                    'j': 'btnJ',
+                    'k': 'btnK'
+                };
+                
+                const btnId = btnIds[key];
+                if (btnId) {
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        if (isPressed) {
+                            btn.classList.add('pressed');
+                        } else {
+                            btn.classList.remove('pressed');
+                        }
+                    }
+                }
             }
         }
 
@@ -893,8 +987,8 @@
 </body>
 </html>
 
+
 <!--
 升级程序，
-让小人可以移动，当按键盘上的f,g键的时候，左边的小人可以左右移动,
-右边的小人用jk控制。
+add button to control right man
 -->
