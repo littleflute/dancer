@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 移动端核心适配设置 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>移动端画布主页</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        dark: '#1F2937',
+                        light: '#F3F4F6'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            /* 自定义工具类 */
+            .content-auto {
+                content-visibility: auto;
+            }
+            .canvas-container {
+                touch-action: none; /* 优化Canvas触摸体验 */
+            }
+            .nav-link-active {
+                @apply bg-primary/10 text-primary border-b-2 border-primary;
+            }
+        }
+
+        /* 基础样式 */
+        body {
+            overflow: hidden; /* 防止页面整体滚动 */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Canvas 自适应 */
+        #mainCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-light font-sans text-dark">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm z-10">
+        <nav class="container mx-auto px-4 py-3">
+            <ul class="flex justify-around items-center text-sm md:text-base">
+                <li>
+                    <a href="index.html" class="nav-link-active px-3 py-2 rounded-sm flex flex-col items-center gap-1 transition-all duration-200">
+                        <i class="fa fa-home text-lg"></i>
+                        <span class="text-xs">首页</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="ds.html" class="px-3 py-2 rounded-sm flex flex-col items-center gap-1 transition-all duration-200 hover:bg-primary/5 hover:text-primary">
+                        <i class="fa fa-paint-brush text-lg"></i>
+                        <span class="text-xs">byDeepSeek</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="db.html"px-3 py-2 rounded-sm flex flex-col items-center gap-1 transition-all duration-200 hover:bg-primary/5 hover:text-primary">
+                        <i class="fa fa-image text-lg"></i>
+                        <span class="text-xs">byDaoBao</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="yb.html" class="px-3 py-2 rounded-sm flex flex-col items-center gap-1 transition-all duration-200 hover:bg-primary/5 hover:text-primary">
+                        <i class="fa fa-user text-lg"></i>
+                        <span class="text-xs">byYuanBao</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- 中间画布区域 -->
+    <main class="flex-1 canvas-container overflow-hidden bg-white/90">
+        <canvas id="mainCanvas"></canvas>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="bg-dark text-white py-2 px-4">
+        <div class="container mx-auto flex justify-between items-center text-xs">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-signal"></i>
+                <span>已连接</span>
+            </div>
+            <div id="statusInfo" class="flex items-center gap-2">
+                <i class="fa fa-pencil"></i>
+                <span>画笔模式</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fa fa-battery-full"></i>
+                <span id="currentTime">00:00</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 获取Canvas元素和上下文
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设备像素比适配，解决Canvas模糊问题
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 初始化Canvas尺寸
+        function resizeCanvas() {
+            // 获取容器实际尺寸
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            // 设置Canvas显示尺寸
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            
+            // 缩放上下文以匹配设备像素比
+            ctx.scale(dpr, dpr);
+            
+            // 绘制初始内容
+            drawInitialContent();
+        }
+
+        // 绘制Canvas初始内容
+        function drawInitialContent() {
+            ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
+            
+            // 绘制欢迎文本
+            ctx.fillStyle = '#3B82F6';
+            ctx.font = 'bold 18px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                '请在画布上触摸或拖动绘制', 
+                canvas.width/(2*dpr), 
+                canvas.height/(2*dpr)
+            );
+            
+            // 绘制提示文本
+            ctx.fillStyle = '#6B7280';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText(
+                '(支持多点触摸)', 
+                canvas.width/(2*dpr), 
+                canvas.height/(2*dpr) + 30
+            );
+        }
+
+        // 触摸/鼠标绘制功能
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = '#3B82F6';
+        let lineWidth = 3;
+
+        // 开始绘制（触摸/鼠标按下）
+        function startDrawing(e) {
+            isDrawing = true;
+            
+            // 处理触摸和鼠标事件
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            
+            // 转换为Canvas坐标
+            const rect = canvas.getBoundingClientRect();
+            lastX = (clientX - rect.left);
+            lastY = (clientY - rect.top);
+            
+            // 更新状态栏信息
+            document.getElementById('statusInfo').innerHTML = `
+                <i class="fa fa-pencil"></i>
+                <span>绘制中 (${Math.round(lastX)}, ${Math.round(lastY)})</span>
+            `;
+        }
+
+        // 绘制中（触摸/鼠标移动）
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault(); // 防止页面滚动
+            
+            // 处理触摸和鼠标事件
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            
+            // 转换为Canvas坐标
+            const rect = canvas.getBoundingClientRect();
+            const x = (clientX - rect.left);
+            const y = (clientY - rect.top);
+            
+            // 绘制线条
+            ctx.beginPath();
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            // 更新最后坐标
+            [lastX, lastY] = [x, y];
+        }
+
+        // 结束绘制（触摸/鼠标松开）
+        function endDrawing() {
+            isDrawing = false;
+            
+            // 恢复状态栏信息
+            document.getElementById('statusInfo').innerHTML = `
+                <i class="fa fa-pencil"></i>
+                <span>画笔模式</span>
+            `;
+        }
+
+        // 更新底部时间显示
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
+        }
+
+        // 事件监听
+        // Canvas事件（支持触摸和鼠标）
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', endDrawing);
+        canvas.addEventListener('touchcancel', endDrawing);
+        
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+        canvas.addEventListener('mouseleave', endDrawing);
+        
+        // 窗口大小变化时调整Canvas
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 页面加载和旋转时初始化
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            updateTime();
+            setInterval(updateTime, 60000); // 每分钟更新时间
+        });
+        
+        // 处理设备旋转
+        window.addEventListener('orientationchange', resizeCanvas);
+
+        // 阻止整个页面的触摸滚动
+        document.addEventListener('touchmove', (e) => {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
