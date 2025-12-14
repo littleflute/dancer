@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火柴人踢毽子动画</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 顶部工具条 */
+        .toolbar {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid #ddd;
+            z-index: 100;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-icon {
+            width: 30px;
+            height: 30px;
+            background: #e74c3c;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .tools {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .tool-btn {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .tool-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .speed-label {
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        
+        .speed-slider {
+            width: 120px;
+        }
+        
+        /* 中间画布区域 */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        #mainCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .scene-title {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+        }
+        
+        /* 底部状态栏 */
+        .status-bar {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            border-top: 1px solid #ddd;
+            font-size: 14px;
+        }
+        
+        .status-info {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-icon.active {
+            background: #2ecc71;
+        }
+        
+        .status-icon.paused {
+            background: #f39c12;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 6px 12px;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #2c3e50;
+        }
+        
+        .control-btn.play {
+            background: #27ae60;
+        }
+        
+        .control-btn.play:hover {
+            background: #219653;
+        }
+        
+        .control-btn.pause {
+            background: #e74c3c;
+        }
+        
+        .control-btn.pause:hover {
+            background: #c0392b;
+        }
+        
+        /* 说明文字 */
+        .instructions {
+            text-align: center;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部工具条 -->
+    <header class="toolbar">
+        <div class="logo">
+            <div class="logo-icon">⚽</div>
+            <span>火柴人踢毽子动画</span>
+        </div>
+        <div class="tools">
+            <button class="tool-btn" id="resetBtn">重置动画</button>
+            <button class="tool-btn" id="changeBgBtn">更换背景</button>
+            <div class="speed-control">
+                <span class="speed-label">速度:</span>
+                <input type="range" min="1" max="10" value="5" class="speed-slider" id="speedSlider">
+            </div>
+        </div>
+    </header>
+    
+    <!-- 中间画布区域 -->
+    <main class="canvas-container">
+        <div class="canvas-wrapper">
+            <div class="scene-title">火柴人踢毽子大赛</div>
+            <canvas id="mainCanvas" width="800" height="500"></canvas>
+        </div>
+    </main>
+    
+    <!-- 底部状态栏 -->
+    <footer class="status-bar">
+        <div class="status-info">
+            <div class="status-item">
+                <div class="status-icon active"></div>
+                <span>动画状态: <span id="statusText">运行中</span></span>
+            </div>
+            <div class="status-item">
+                <span>帧率: <span id="fpsCounter">60</span> FPS</span>
+            </div>
+            <div class="status-item">
+                <span>踢毽子次数: <span id="kickCount">0</span></span>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="control-btn play" id="playBtn">播放</button>
+            <button class="control-btn pause" id="pauseBtn">暂停</button>
+            <button class="control-btn" id="stepBtn">单步</button>
+        </div>
+    </footer>
+    
+    <p class="instructions">使用控制按钮可以控制动画播放，拖动速度滑块可以调整动画速度</p>
+    
+    <script>
+        // 获取Canvas和上下文
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 动画控制变量
+        let animationId = null;
+        let isPlaying = true;
+        let animationSpeed = 5; // 默认速度
+        let lastTime = 0;
+        let frameCount = 0;
+        let fps = 60;
+        let kickCount = 0;
+        let backgroundIndex = 0;
+        
+        // 背景颜色选项
+        const backgrounds = [
+            { top: '#1a2980', bottom: '#26d0ce' }, // 默认
+            { top: '#3a1c71', bottom: '#d76d77' }, // 紫色到粉色
+            { top: '#141E30', bottom: '#243B55' }, // 深蓝渐变
+            { top: '#FF512F', bottom: '#F09819' }, // 橙色渐变
+            { top: '#4A00E0', bottom: '#8E2DE2' }  // 紫色渐变
+        ];
+        
+        // 动画状态
+        let animationTime = 0;
+        
+        // 火柴人1属性
+        const stickman1 = {
+            x: 200,
+            y: 300,
+            headRadius: 20,
+            bodyHeight: 60,
+            armLength: 40,
+            legLength: 50,
+            color: '#3498db',
+            armAngle: 0,
+            legAngle: 0,
+            kickPhase: 0
+        };
+        
+        // 火柴人2属性
+        const stickman2 = {
+            x: 600,
+            y: 300,
+            headRadius: 20,
+            bodyHeight: 60,
+            armLength: 40,
+            legLength: 50,
+            color: '#e74c3c',
+            armAngle: 0,
+            legAngle: 0,
+            kickPhase: Math.PI // 相位与火柴人1相反
+        };
+        
+        // 毽子属性
+        const shuttlecock = {
+            x: 400,
+            y: 200,
+            radius: 12,
+            color: '#f1c40f',
+            featherCount: 5,
+            featherLength: 20,
+            velocityX: 3,
+            velocityY: 0,
+            gravity: 0.2,
+            isFlying: true
+        };
+        
+        // 绘制火柴人函数
+        function drawStickman(stickman, time) {
+            const { x, y, headRadius, bodyHeight, armLength, legLength, color } = stickman;
+            
+            // 计算动态角度
+            const armSwing = Math.sin(time * 0.05 + stickman.kickPhase) * 0.5;
+            const legSwing = Math.sin(time * 0.05 + stickman.kickPhase) * 0.8;
+            
+            // 如果是踢毽子动作
+            let kickAngle = 0;
+            const distanceToShuttlecock = Math.sqrt(
+                Math.pow(x - shuttlecock.x, 2) + Math.pow(y - shuttlecock.y, 2)
+            );
+            
+            if (distanceToShuttlecock < 150 && shuttlecock.isFlying) {
+                kickAngle = Math.sin(time * 0.1) * 1.5;
+                
+                // 当踢到毽子时增加计数
+                if (distanceToShuttlecock < 50 && Math.abs(kickAngle) > 0.8) {
+                    if (Math.abs(shuttlecock.x - x) < 10) {
+                        kickCount++;
+                        document.getElementById('kickCount').textContent = kickCount;
+                    }
+                }
+            }
+            
+            // 设置样式
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            
+            // 绘制头部
+            ctx.beginPath();
+            ctx.arc(x, y - headRadius, headRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fill();
+            
+            // 绘制身体
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + bodyHeight);
+            ctx.stroke();
+            
+            // 绘制手臂
+            const leftArmAngle = -Math.PI/4 + armSwing;
+            const rightArmAngle = Math.PI/4 + armSwing;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y + 10);
+            ctx.lineTo(
+                x + Math.cos(leftArmAngle) * armLength,
+                y + 10 + Math.sin(leftArmAngle) * armLength
+            );
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y + 10);
+            ctx.lineTo(
+                x + Math.cos(rightArmAngle) * armLength,
+                y + 10 + Math.sin(rightArmAngle) * armLength
+            );
+            ctx.stroke();
+            
+            // 绘制腿部
+            const leftLegAngle = Math.PI/4 + legSwing + kickAngle;
+            const rightLegAngle = -Math.PI/4 + legSwing - kickAngle;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y + bodyHeight);
+            ctx.lineTo(
+                x + Math.cos(leftLegAngle) * legLength,
+                y + bodyHeight + Math.sin(leftLegAngle) * legLength
+            );
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y + bodyHeight);
+            ctx.lineTo(
+                x + Math.cos(rightLegAngle) * legLength,
+                y + bodyHeight + Math.sin(rightLegAngle) * legLength
+            );
+            ctx.stroke();
+        }
+        
+        // 绘制毽子函数
+        function drawShuttlecock() {
+            const { x, y, radius, color, featherCount, featherLength } = shuttlecock;
+            
+            // 绘制毽子主体
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制毽子羽毛
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < featherCount; i++) {
+                const angle = (i / featherCount) * Math.PI * 2;
+                const endX = x + Math.cos(angle) * featherLength;
+                const endY = y + Math.sin(angle) * featherLength;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+        }
+        
+        // 绘制背景
+        function drawBackground() {
+            // 绘制草地
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+            
+            // 绘制草叶
+            ctx.strokeStyle = '#2ecc71';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * canvas.width;
+                const height = 10 + Math.random() * 20;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - 100);
+                ctx.quadraticCurveTo(
+                    x + 5, canvas.height - 100 - height,
+                    x, canvas.height - 100
+                );
+                ctx.stroke();
+            }
+            
+            // 绘制云朵
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            
+            // 云朵1
+            ctx.beginPath();
+            ctx.arc(150, 80, 20, 0, Math.PI * 2);
+            ctx.arc(180, 70, 25, 0, Math.PI * 2);
+            ctx.arc(210, 80, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 云朵2
+            ctx.beginPath();
+            ctx.arc(600, 120, 20, 0, Math.PI * 2);
+            ctx.arc(630, 110, 25, 0, Math.PI * 2);
+            ctx.arc(660, 120, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制太阳
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(100, 100, 30, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // 更新毽子位置
+        function updateShuttlecock() {
+            // 应用重力
+            shuttlecock.velocityY += shuttlecock.gravity;
+            
+            // 更新位置
+            shuttlecock.x += shuttlecock.velocityX;
+            shuttlecock.y += shuttlecock.velocityY;
+            
+            // 边界检测
+            if (shuttlecock.y > canvas.height - 120) {
+                shuttlecock.y = canvas.height - 120;
+                shuttlecock.velocityY = -shuttlecock.velocityY * 0.8; // 弹性碰撞
+                
+                // 如果速度太小，停止弹跳
+                if (Math.abs(shuttlecock.velocityY) < 1) {
+                    shuttlecock.isFlying = false;
+                }
+            }
+            
+            if (shuttlecock.x < 0 || shuttlecock.x > canvas.width) {
+                shuttlecock.velocityX = -shuttlecock.velocityX;
+            }
+            
+            // 与火柴人互动
+            const stickmen = [stickman1, stickman2];
+            for (const stickman of stickmen) {
+                const distance = Math.sqrt(
+                    Math.pow(shuttlecock.x - stickman.x, 2) + 
+                    Math.pow(shuttlecock.y - (stickman.y + stickman.bodyHeight), 2)
+                );
+                
+                if (distance < 50) {
+                    // 被踢到，改变方向
+                    const angle = Math.atan2(
+                        shuttlecock.y - (stickman.y + stickman.bodyHeight),
+                        shuttlecock.x - stickman.x
+                    );
+                    
+                    shuttlecock.velocityX = Math.cos(angle) * 8;
+                    shuttlecock.velocityY = Math.sin(angle) * 8 - 4;
+                    shuttlecock.isFlying = true;
+                }
+            }
+            
+            // 限制速度
+            const speed = Math.sqrt(shuttlecock.velocityX * shuttlecock.velocityX + 
+                                  shuttlecock.velocityY * shuttlecock.velocityY);
+            if (speed > 10) {
+                shuttlecock.velocityX = (shuttlecock.velocityX / speed) * 10;
+                shuttlecock.velocityY = (shuttlecock.velocityY / speed) * 10;
+            }
+        }
+        
+        // 绘制函数
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            drawBackground();
+            
+            // 绘制火柴人
+            drawStickman(stickman1, animationTime);
+            drawStickman(stickman2, animationTime);
+            
+            // 绘制毽子
+            drawShuttlecock();
+            
+            // 绘制连接线（表示毽子运动轨迹）
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            ctx.moveTo(stickman1.x, stickman1.y + stickman1.bodyHeight);
+            ctx.lineTo(shuttlecock.x, shuttlecock.y);
+            ctx.lineTo(stickman2.x, stickman2.y + stickman2.bodyHeight);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+        }
+        
+        // 动画循环
+        function animate(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            // 计算FPS
+            frameCount++;
+            if (frameCount % 10 === 0) {
+                fps = Math.round(1000 / deltaTime);
+                if (fps > 60) fps = 60;
+                document.getElementById('fpsCounter').textContent = fps;
+            }
+            
+            // 根据速度更新动画时间
+            const speedFactor = animationSpeed / 5;
+            animationTime += deltaTime * 0.01 * speedFactor;
+            
+            // 更新毽子位置
+            updateShuttlecock();
+            
+            // 绘制场景
+            draw();
+            
+            // 继续动画循环
+            if (isPlaying) {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        // 初始化函数
+        function init() {
+            // 启动动画
+            animationId = requestAnimationFrame(animate);
+            
+            // 设置事件监听器
+            document.getElementById('playBtn').addEventListener('click', () => {
+                if (!isPlaying) {
+                    isPlaying = true;
+                    document.getElementById('statusText').textContent = '运行中';
+                    lastTime = 0; // 重置时间以便计算FPS
+                    animate(performance.now());
+                }
+            });
+            
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                isPlaying = false;
+                document.getElementById('statusText').textContent = '已暂停';
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+            });
+            
+            document.getElementById('stepBtn').addEventListener('click', () => {
+                if (!isPlaying) {
+                    animationTime += 0.1;
+                    updateShuttlecock();
+                    draw();
+                }
+            });
+            
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                // 重置动画
+                animationTime = 0;
+                kickCount = 0;
+                document.getElementById('kickCount').textContent = '0';
+                
+                // 重置毽子位置
+                shuttlecock.x = 400;
+                shuttlecock.y = 200;
+                shuttlecock.velocityX = 3;
+                shuttlecock.velocityY = 0;
+                shuttlecock.isFlying = true;
+                
+                if (!isPlaying) {
+                    draw();
+                }
+            });
+            
+            document.getElementById('changeBgBtn').addEventListener('click', () => {
+                // 更换背景
+                backgroundIndex = (backgroundIndex + 1) % backgrounds.length;
+                const bg = backgrounds[backgroundIndex];
+                document.body.style.background = `linear-gradient(135deg, ${bg.top}, ${bg.bottom})`;
+            });
+            
+            document.getElementById('speedSlider').addEventListener('input', (e) => {
+                animationSpeed = parseInt(e.target.value);
+            });
+            
+            // 初始绘制
+            draw();
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', init);
+        
+        // 窗口大小调整时重新设置Canvas大小
+        window.addEventListener('resize', () => {
+            const container = document.querySelector('.canvas-wrapper');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        });
+    </script>
+</body>
+</html>

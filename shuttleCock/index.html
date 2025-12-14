@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手机网页主页</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.5;
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 顶部导航栏 */
+        .header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 i {
+            font-size: 1.6rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none; /* Firefox */
+        }
+        
+        .nav-links::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge */
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        /* 主要内容区域 */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .content-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* 画布区域 */
+        .canvas-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            height: 400px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .canvas-header {
+            padding: 15px;
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .canvas-title {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .canvas-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .canvas-controls button {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .canvas-controls button:hover {
+            background-color: #f8f9fa;
+            border-color: #6a11cb;
+        }
+        
+        .canvas-area {
+            width: 100%;
+            height: calc(100% - 55px);
+            position: relative;
+            background-color: #f8f9fa;
+            overflow: hidden;
+        }
+        
+        /* 示例形状 */
+        .shape {
+            position: absolute;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .shape:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .shape-1 {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
+            top: 30px;
+            left: 30px;
+        }
+        
+        .shape-2 {
+            width: 100px;
+            height: 60px;
+            background: linear-gradient(45deg, #a1c4fd, #c2e9fb);
+            top: 150px;
+            right: 40px;
+            border-radius: 30px;
+        }
+        
+        .shape-3 {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(45deg, #ffecd2, #fcb69f);
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 50%;
+        }
+        
+        .shape-4 {
+            width: 120px;
+            height: 40px;
+            background: linear-gradient(45deg, #84fab0, #8fd3f4);
+            bottom: 40px;
+            right: 60px;
+        }
+        
+        /* 信息卡片 */
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card i {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #6a11cb;
+        }
+        
+        .card h3 {
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .card p {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        /* 底部状态栏 */
+        .footer {
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #555;
+        }
+        
+        .status-item i {
+            color: #6a11cb;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .indicator-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+        }
+        
+        .indicator-dot.inactive {
+            background-color: #ddd;
+        }
+        
+        .connection-status {
+            font-size: 0.8rem;
+            color: #4CAF50;
+            font-weight: 500;
+        }
+        
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .footer-actions button {
+            background-color: #6a11cb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .footer-actions button:hover {
+            background-color: #5a0cb3;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .canvas-container {
+                height: 350px;
+            }
+            
+            .info-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .footer {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .status-info {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .nav-links a {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+            
+            .info-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .canvas-container, .card {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* 画布交互提示 */
+        .canvas-hint {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <h1><i class="fas fa-palette"></i> 创意画布</h1>
+        <div class="nav-links">
+            <a href="#" class="active"><i class="fas fa-home"></i> 主页</a>
+            <a href="ds.html"><i class="fas fa-project-diagram"></i>byDeepSeek</a>
+            <a href="db.html"><i class="fas fa-brush"></i> byDaoBao</a>
+            <a href="yb.html"><i class="fas fa-images"></i> byYuanBao</a>
+            <a href="prompt.txt"><i class="fas fa-sliders-h"></i> prompt</a>
+            <a href="#"><i class="fas fa-question-circle"></i> 帮助</a>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="content-title">
+            <h2>我的画布</h2>
+            <span id="current-time">正在加载时间...</span>
+        </div>
+        
+        <!-- 画布区域 -->
+        <div class="canvas-container">
+            <div class="canvas-header">
+                <div class="canvas-title">画布 #001</div>
+                <div class="canvas-controls">
+                    <button id="clear-btn"><i class="fas fa-eraser"></i> 清除</button>
+                    <button id="add-shape-btn"><i class="fas fa-plus-circle"></i> 添加形状</button>
+                </div>
+            </div>
+            <div class="canvas-area" id="canvas">
+                <!-- 示例形状 -->
+                <div class="shape shape-1"></div>
+                <div class="shape shape-2"></div>
+                <div class="shape shape-3"></div>
+                <div class="shape shape-4"></div>
+                
+                <!-- 交互提示 -->
+                <div class="canvas-hint">
+                    点击形状可进行拖动，使用上方按钮添加更多
+                </div>
+            </div>
+        </div>
+        
+        <!-- 信息卡片 -->
+        <div class="info-cards">
+            <div class="card">
+                <i class="fas fa-history"></i>
+                <h3>最近项目</h3>
+                <p>查看您最近的工作和修改</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>云端存储</h3>
+                <p>已使用 1.2GB / 5GB</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-users"></i>
+                <h3>团队协作</h3>
+                <p>3 位成员在线</p>
+            </div>
+            <div class="card">
+                <i class="fas fa-chart-line"></i>
+                <h3>数据统计</h3>
+                <p>本月创建了 24 个项目</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="footer">
+        <div class="status-info">
+            <div class="status-item">
+                <i class="fas fa-server"></i>
+                <span>服务器状态: <span class="connection-status">已连接</span></span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-battery-three-quarters"></i>
+                <span>电量: 78%</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-wifi"></i>
+                <span>网络: 良好</span>
+            </div>
+            <div class="status-indicator">
+                <div class="indicator-dot"></div>
+                <div class="indicator-dot"></div>
+                <div class="indicator-dot inactive"></div>
+                <div class="indicator-dot inactive"></div>
+            </div>
+        </div>
+        <div class="footer-actions">
+            <button id="save-btn"><i class="fas fa-save"></i> 保存</button>
+            <button id="export-btn"><i class="fas fa-download"></i> 导出</button>
+        </div>
+    </footer>
+
+    <script>
+        // 更新时间显示
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+            const dateString = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            document.getElementById('current-time').textContent = `${dateString} ${timeString}`;
+        }
+        
+        // 初始更新时间
+        updateTime();
+        // 每秒更新时间
+        setInterval(updateTime, 1000);
+        
+        // 画布交互功能
+        const canvas = document.getElementById('canvas');
+        const clearBtn = document.getElementById('clear-btn');
+        const addShapeBtn = document.getElementById('add-shape-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const exportBtn = document.getElementById('export-btn');
+        
+        // 定义可用的颜色和形状
+        const colors = [
+            'linear-gradient(45deg, #ff9a9e, #fad0c4)',
+            'linear-gradient(45deg, #a1c4fd, #c2e9fb)',
+            'linear-gradient(45deg, #ffecd2, #fcb69f)',
+            'linear-gradient(45deg, #84fab0, #8fd3f4)',
+            'linear-gradient(45deg, #d4fc79, #96e6a1)',
+            'linear-gradient(45deg, #a6c0fe, #f68084)'
+        ];
+        
+        const shapes = ['rectangle', 'circle', 'rounded'];
+        
+        // 添加随机形状到画布
+        function addRandomShape() {
+            const shape = document.createElement('div');
+            shape.classList.add('shape');
+            
+            // 随机大小和位置
+            const size = Math.floor(Math.random() * 80) + 50;
+            const posX = Math.floor(Math.random() * (canvas.offsetWidth - size - 40)) + 20;
+            const posY = Math.floor(Math.random() * (canvas.offsetHeight - size - 40)) + 20;
+            
+            // 随机颜色
+            const colorIndex = Math.floor(Math.random() * colors.length);
+            shape.style.background = colors[colorIndex];
+            
+            // 随机形状
+            const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
+            if (shapeType === 'circle') {
+                shape.style.borderRadius = '50%';
+            } else if (shapeType === 'rounded') {
+                shape.style.borderRadius = '25px';
+            } else {
+                shape.style.borderRadius = '8px';
+            }
+            
+            shape.style.width = `${size}px`;
+            shape.style.height = `${size}px`;
+            shape.style.left = `${posX}px`;
+            shape.style.top = `${posY}px`;
+            
+            // 添加拖动功能
+            makeDraggable(shape);
+            
+            canvas.appendChild(shape);
+            
+            // 添加动画效果
+            shape.style.opacity = '0';
+            shape.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                shape.style.transition = 'opacity 0.3s, transform 0.3s';
+                shape.style.opacity = '1';
+                shape.style.transform = 'scale(1)';
+            }, 10);
+        }
+        
+        // 使元素可拖动
+        function makeDraggable(element) {
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            element.addEventListener('mousedown', startDrag);
+            element.addEventListener('touchstart', startDragTouch);
+            
+            function startDrag(e) {
+                isDragging = true;
+                offsetX = e.offsetX;
+                offsetY = e.offsetY;
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+                e.preventDefault();
+            }
+            
+            function startDragTouch(e) {
+                isDragging = true;
+                const touch = e.touches[0];
+                const rect = element.getBoundingClientRect();
+                offsetX = touch.clientX - rect.left;
+                offsetY = touch.clientY - rect.top;
+                document.addEventListener('touchmove', onDragTouch);
+                document.addEventListener('touchend', stopDrag);
+                e.preventDefault();
+            }
+            
+            function onDrag(e) {
+                if (!isDragging) return;
+                
+                const canvasRect = canvas.getBoundingClientRect();
+                let x = e.clientX - canvasRect.left - offsetX;
+                let y = e.clientY - canvasRect.top - offsetY;
+                
+                // 限制在画布范围内
+                x = Math.max(0, Math.min(x, canvasRect.width - element.offsetWidth));
+                y = Math.max(0, Math.min(y, canvasRect.height - element.offsetHeight));
+                
+                element.style.left = `${x}px`;
+                element.style.top = `${y}px`;
+            }
+            
+            function onDragTouch(e) {
+                if (!isDragging) return;
+                
+                const touch = e.touches[0];
+                const canvasRect = canvas.getBoundingClientRect();
+                let x = touch.clientX - canvasRect.left - offsetX;
+                let y = touch.clientY - canvasRect.top - offsetY;
+                
+                // 限制在画布范围内
+                x = Math.max(0, Math.min(x, canvasRect.width - element.offsetWidth));
+                y = Math.max(0, Math.min(y, canvasRect.height - element.offsetHeight));
+                
+                element.style.left = `${x}px`;
+                element.style.top = `${y}px`;
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchmove', onDragTouch);
+                document.removeEventListener('touchend', stopDrag);
+            }
+        }
+        
+        // 初始化现有形状的拖动功能
+        document.querySelectorAll('.shape').forEach(makeDraggable);
+        
+        // 清除画布
+        clearBtn.addEventListener('click', function() {
+            const shapes = document.querySelectorAll('.shape');
+            if (shapes.length === 0) return;
+            
+            // 添加消失动画
+            shapes.forEach(shape => {
+                shape.style.transition = 'opacity 0.3s, transform 0.3s';
+                shape.style.opacity = '0';
+                shape.style.transform = 'scale(0.5)';
+            });
+            
+            // 延迟删除元素
+            setTimeout(() => {
+                shapes.forEach(shape => {
+                    if (shape.parentNode === canvas) {
+                        canvas.removeChild(shape);
+                    }
+                });
+            }, 300);
+        });
+        
+        // 添加形状按钮
+        addShapeBtn.addEventListener('click', addRandomShape);
+        
+        // 保存按钮
+        saveBtn.addEventListener('click', function() {
+            const shapesCount = document.querySelectorAll('.shape').length;
+            alert(`画布已保存！当前有 ${shapesCount} 个形状。`);
+            
+            // 添加保存反馈动画
+            saveBtn.innerHTML = '<i class="fas fa-check"></i> 已保存';
+            saveBtn.style.backgroundColor = '#4CAF50';
+            
+            setTimeout(() => {
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> 保存';
+                saveBtn.style.backgroundColor = '#6a11cb';
+            }, 2000);
+        });
+        
+        // 导出按钮
+        exportBtn.addEventListener('click', function() {
+            alert('画布已导出为 PNG 格式！');
+            
+            // 添加导出反馈动画
+            exportBtn.innerHTML = '<i class="fas fa-check"></i> 已导出';
+            exportBtn.style.backgroundColor = '#2196F3';
+            
+            setTimeout(() => {
+                exportBtn.innerHTML = '<i class="fas fa-download"></i> 导出';
+                exportBtn.style.backgroundColor = '#6a11cb';
+            }, 2000);
+        });
+        
+        // 顶部导航链接点击效果
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // 移除所有active类
+                document.querySelectorAll('.nav-links a').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // 添加active类到当前点击的链接
+                this.classList.add('active');
+                
+                // 添加点击反馈
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 200);
+            });
+        });
+        
+        // 页面加载完成后的初始效果
+        window.addEventListener('load', function() {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s';
+            
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>
